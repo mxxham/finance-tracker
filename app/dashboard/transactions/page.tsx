@@ -10,6 +10,29 @@ interface Category { id: number; name: string; color: string; type: string; }
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+const CATEGORY_TRANSLATIONS: Record<string, string> = {
+  'Transfer Masuk': 'Incoming Transfer',
+  'Makan & Minum': 'Food & Drink',
+  'Belanja': 'Shopping',
+  'Tagihan & Utilitas': 'Bills & Utilities',
+  'Pulsa & Internet': 'Phone & Internet',
+  'Hiburan': 'Entertainment',
+  'Kesehatan': 'Health',
+  'Sewa & Kost': 'Rent & Housing',
+  'Pendidikan': 'Education',
+  'Tabungan & Investasi': 'Savings & Investment',
+  'Lainnya': 'Other',
+  'Transport & Ojol': 'Transport & Rideshare',
+  'Bisnis': 'Business',
+  'Gaji': 'Salary',
+  'Freelance': 'Freelance',
+  'No category': 'No category',
+};
+
+function translateCategory(name: string) {
+  return CATEGORY_TRANSLATIONS[name] ?? name;
+}
+
 function fmt(n: number) {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
 }
@@ -48,13 +71,24 @@ export default function TransactionsPage() {
 
   const openEdit = (tx: Transaction) => {
     setEditTx(tx);
-    setForm({ amount: String(tx.amount), type: tx.type, description: tx.description || '', date: tx.date.split('T')[0], category_id: String(tx.category_id) });
+    setForm({
+      amount: String(tx.amount),
+      type: tx.type,
+      description: tx.description || '',
+      date: tx.date.split('T')[0],
+      category_id: tx.category_id !== null && tx.category_id !== undefined ? String(tx.category_id) : '',
+    });
     setShowModal(true);
   };
 
   const handleSave = async () => {
     try {
-      const body = { ...form, amount: Number(form.amount), category_id: Number(form.category_id) || null };
+      const parsedCategoryId = form.category_id === '' ? null : Number(form.category_id);
+      const body = {
+        ...form,
+        amount: Number(form.amount),
+        category_id: parsedCategoryId === null || Number.isNaN(parsedCategoryId) ? null : parsedCategoryId,
+      };
       if (editTx) await api.updateTransaction(editTx.id, body);
       else await api.createTransaction(body);
       setShowModal(false);
@@ -118,7 +152,7 @@ export default function TransactionsPage() {
                   <span className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full"
                     style={{ background: `${tx.category_color}25`, color: tx.category_color }}>
                     <span className="w-1.5 h-1.5 rounded-full" style={{ background: tx.category_color }} />
-                    {tx.category_name || 'Uncategorized'}
+                    {translateCategory(tx.category_name || 'Uncategorized')}
                   </span>
                 </td>
                 <td className="px-5 py-3.5">
@@ -171,7 +205,7 @@ export default function TransactionsPage() {
               <label className="block text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>Category</label>
               <select value={form.category_id} onChange={e => setForm(f => ({ ...f, category_id: e.target.value }))}>
                 <option value="">No category</option>
-                {filteredCats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {filteredCats.map(c => <option key={c.id} value={c.id}>{translateCategory(c.name)}</option>)}
               </select>
             </div>
             <div>

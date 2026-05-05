@@ -19,6 +19,22 @@ function fmt(n: number) {
   }).format(n);
 }
 
+function merchantName(description: string): string {
+  // Normalize merchant names by removing common prefixes/suffixes, numbers, and extra spaces
+  return description
+    .toLowerCase()
+    // Remove common banking prefixes/suffixes
+    .replace(/^(transfer|payment|purchase|debit|credit|from|to|atm|online|mobile|web)\s+/i, '')
+    .replace(/\s+(transfer|payment|purchase|debit|credit|from|to|atm|online|mobile|web)$/i, '')
+    // Remove transaction codes, reference numbers, etc.
+    .replace(/\b\d{4,}\b/g, '') // Remove sequences of 4+ digits
+    .replace(/[#*]\w+/g, '') // Remove codes like #ABC123
+    .replace(/\b(ref|trx|txn|id)\s*\d*\b/gi, '') // Remove reference/transaction IDs
+    // Clean up extra spaces
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 const CONFIDENCE_COLOR = {
   high: '#22c55e',
   medium: '#f59e0b',
@@ -41,6 +57,8 @@ export default function ScanPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showRawText, setShowRawText] = useState(false);
+  const [duplicates, setDuplicates] = useState<ParsedTransaction[]>([]);
+  const [filteredTxs, setFilteredTxs] = useState<(ParsedTransaction & { category_id: number | null })[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -136,12 +154,59 @@ export default function ScanPage() {
       setNotes(parsed.notes);
       setTransactions(parsed.transactions);
 
+      // Check for duplicates - get ALL transactions to ensure comprehensive checking
+      setProgressLabel('Checking for duplicates...');
+      const existingTxs = await api.getTransactions({
+        limit: '10000', // Get many more transactions to check against
+      });
+
+      const duplicates: ParsedTransaction[] = [];
+      const uniqueTxs = parsed.transactions.filter(tx => {
+        const isDuplicate = existingTxs.some((existing: any) => {
+          // Normalize descriptions for comparison
+          const txMerchant = merchantName(tx.description);
+          const existingMerchant = merchantName(existing.description);
+
+          // Check merchant match (exact or very similar)
+          const merchantMatch = txMerchant === existingMerchant ||
+            txMerchant.includes(existingMerchant) ||
+            existingMerchant.includes(txMerchant);
+
+          // Amount match with percentage tolerance (2% or max 1000 difference)
+          const amountDiff = Math.abs(tx.amount - existing.amount);
+          const amountTolerance = Math.max(tx.amount * 0.02, 1000); // 2% or 1000 max
+          const amountMatch = amountDiff <= amountTolerance;
+
+          // Type match (income vs expense)
+          const typeMatch = tx.type === existing.type;
+
+          // Debug logging for troubleshooting
+          if (merchantMatch && amountMatch && typeMatch) {
+            console.log('Duplicate found:', {
+              scanned: { desc: tx.description, amount: tx.amount, date: tx.date },
+              existing: { desc: existing.description, amount: existing.amount, date: existing.date }
+            });
+          }
+
+          return merchantMatch && amountMatch && typeMatch;
+        });
+
+        if (isDuplicate) {
+          duplicates.push(tx);
+          return false;
+        }
+        return true;
+      });
+
+      setDuplicates(duplicates);
+
       // Attach real category_id from user's categories
-      const withIds = parsed.transactions.map(tx => ({
+      const withIds = uniqueTxs.map(tx => ({
         ...tx,
         category_id: matchCategoryId(tx.category_hint, tx.type),
       }));
       setEditedTxs(withIds);
+      setFilteredTxs(withIds);
 
       setProgress(100);
       setStatus('done');
@@ -188,6 +253,8 @@ export default function ScanPage() {
     setStatus('idle');
     setTransactions([]);
     setEditedTxs([]);
+    setFilteredTxs([]);
+    setDuplicates([]);
     setOcrText('');
     setError('');
     setSaved(false);
@@ -325,6 +392,37 @@ export default function ScanPage() {
               <div className="rounded-xl px-4 py-3 text-sm"
                 style={{ background: '#ef444415', border: '1px solid #ef444430', color: 'var(--red)' }}>
                 Error: {error}
+              </div>
+            )}
+
+            {/* Duplicates filtered out */}
+            {duplicates.length > 0 && (
+              <div className="rounded-xl px-4 py-3"
+                style={{ background: '#f59e0b15', border: '1px solid #f59e0b30' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm font-semibold" style={{ color: '#f59e0b' }}>⚠️ Duplicates Filtered</span>
+                  <span className="text-xs px-2 py-1 rounded" style={{ background: '#f59e0b20', color: '#f59e0b' }}>
+                    {duplicates.length} transaction{duplicates.length > 1 ? 's' : ''} removed
+                  </span>
+                </div>
+                <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+                  These transactions matched existing ones in your database (same merchant, similar amount, same type):
+                </p>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {duplicates.map((tx, i) => (
+                    <div key={i} className="text-xs flex items-center justify-between py-1 px-2 rounded"
+                      style={{ background: 'var(--surface-2)' }}>
+                      <div className="flex-1">
+                        <span className="font-medium">{merchantName(tx.description)}</span>
+                        <span className="ml-2 text-gray-500">({tx.description})</span>
+                      </div>
+                      <span className="font-mono ml-2">{fmt(tx.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+                  💡 Tip: Recurring purchases at the same vendor are now allowed on different dates.
+                </p>
               </div>
             )}
 

@@ -9,6 +9,7 @@ const COLORS = ['#6366f1','#22c55e','#ef4444','#f59e0b','#3b82f6','#ec4899','#a8
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [form, setForm] = useState({ name: '', color: '#6366f1', icon: 'tag', type: 'expense' });
 
   const load = useCallback(async () => {
@@ -20,11 +21,34 @@ export default function CategoriesPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const openAdd = () => {
+    setSelectedCategory(null);
+    setForm({ name: '', color: '#6366f1', icon: 'tag', type: 'expense' });
+    setShowModal(true);
+  };
+
+  const openEdit = (category: Category) => {
+    setSelectedCategory(category);
+    setForm({ name: category.name, color: category.color, icon: category.icon, type: category.type });
+    setShowModal(true);
+  };
+
   const handleSave = async () => {
     if (!form.name.trim()) return;
-    await api.createCategory(form);
+    if (selectedCategory) {
+      await api.updateCategory(selectedCategory.id, form);
+    } else {
+      await api.createCategory(form);
+    }
     setShowModal(false);
+    setSelectedCategory(null);
     setForm({ name: '', color: '#6366f1', icon: 'tag', type: 'expense' });
+    load();
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Delete this category?')) return;
+    await api.deleteCategory(id);
     load();
   };
 
@@ -38,7 +62,7 @@ export default function CategoriesPage() {
           <h1 className="text-2xl font-bold">Categories</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{categories.length} categories</p>
         </div>
-        <button onClick={() => setShowModal(true)}
+        <button onClick={openAdd}
           className="px-5 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--accent)' }}>
           + New Category
         </button>
@@ -67,6 +91,16 @@ export default function CategoriesPage() {
                       <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{c.color}</span>
                     </div>
                   </div>
+                  <div className="ml-auto flex items-center gap-2">
+                    <button onClick={() => openEdit(c)}
+                      className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
+                      Edit
+                    </button>
+                    <button onClick={() => handleDelete(c.id)}
+                      className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--surface-2)', color: 'var(--red)' }}>
+                      Del
+                    </button>
+                  </div>
                 </div>
               ))}
               {cats.length === 0 && (
@@ -83,7 +117,7 @@ export default function CategoriesPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
           <div className="w-full max-w-sm rounded-2xl p-6 space-y-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <h2 className="font-bold text-lg">New Category</h2>
+            <h2 className="font-bold text-lg">{selectedCategory ? 'Edit Category' : 'New Category'}</h2>
 
             <div className="flex gap-2">
               {(['expense', 'income'] as const).map(t => (
@@ -126,7 +160,7 @@ export default function CategoriesPage() {
               <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-lg text-sm"
                 style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>Cancel</button>
               <button onClick={handleSave} className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
-                style={{ background: 'var(--accent)' }}>Create</button>
+                style={{ background: 'var(--accent)' }}>{selectedCategory ? 'Save' : 'Create'}</button>
             </div>
           </div>
         </div>

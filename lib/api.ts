@@ -38,6 +38,10 @@ export const api = {
   getCategories: () => request('/categories'),
   createCategory: (body: object) =>
     request('/categories', { method: 'POST', body: JSON.stringify(body) }),
+  updateCategory: (id: number, body: object) =>
+    request(`/categories/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteCategory: (id: number) =>
+    request(`/categories/${id}`, { method: 'DELETE' }),
 
   getStats: (params?: Record<string, string>) => {
     const qs = params ? '?' + new URLSearchParams(params).toString() : '';

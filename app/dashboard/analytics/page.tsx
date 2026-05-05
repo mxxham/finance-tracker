@@ -313,7 +313,7 @@ export default function AnalyticsPage() {
                 innerRadius={60}
                 outerRadius={100}
                 paddingAngle={4}
-                label={({ name, percent }) => `${name} ${Math.round(percent * 100)}%`}
+                label={({ name, percent }) => `${name} ${Math.round((percent || 0) * 100)}%`}
                 labelLine={false}
               >
                 {spendingBreakdown.map((entry, index) => (
@@ -358,7 +358,7 @@ export default function AnalyticsPage() {
                 tickFormatter={(value) => fmt(Number(value))}
               />
               <Tooltip formatter={(value) => fmt(Number(value))} contentStyle={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
-              <Bar dataKey="total" fill="#4f46e5" cursor={{ fill: 'transparent' }} />
+              <Bar dataKey="total" fill="#4f46e5" cursor="transparent" />
             </BarChart>
           </ResponsiveContainer>
           <div className="mt-4 space-y-3">
@@ -386,7 +386,7 @@ export default function AnalyticsPage() {
               <XAxis dataKey="label" stroke="var(--text-muted)" tickLine={false} axisLine={false} />
               <YAxis stroke="var(--text-muted)" tickLine={false} axisLine={false} tickFormatter={(value) => fmtCompact(Number(value))} />
               <Tooltip formatter={(value) => fmt(Number(value))} contentStyle={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
-              <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="#22c55e" cursor={{ fill: 'transparent' }} />
+              <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="#22c55e" cursor="transparent" />
             </BarChart>
           </ResponsiveContainer>
         </div>
