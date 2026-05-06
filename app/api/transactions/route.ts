@@ -51,6 +51,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Amount, type, and date are required' }, { status: 400 });
     }
 
+    const duplicateCheck = await query(
+      `SELECT id FROM transactions
+       WHERE user_id = $1 AND type = $2 AND amount = $3 AND date = $4 AND LOWER(COALESCE(description, '')) = LOWER(COALESCE($5, ''))
+       LIMIT 1`,
+      [user.userId, type, amount, date, description || '']
+    );
+
+    if (duplicateCheck.rows.length > 0) {
+      return NextResponse.json({ error: 'Duplicate transaction already exists for this date' }, { status: 409 });
+    }
+
     const result = await query(
       `INSERT INTO transactions (user_id, category_id, amount, type, description, date)
        VALUES ($1, $2, $3, $4, $5, $6)

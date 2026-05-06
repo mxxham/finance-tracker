@@ -2,44 +2,18 @@
 import { useState, useRef, useCallback, DragEvent, ChangeEvent, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { parseOCRText, matchCategory, ParsedTransaction } from '@/lib/parser';
+import { showToast } from '@/components/Toast';
+import { translateCategory } from '@/lib/categories';
 
 interface Category { id: number; name: string; color: string; type: string; }
+type ScanStatus = 'idle' | 'loading_ocr' | 'ocr_running' | 'parsing' | 'done' | 'error';
 
-type ScanStatus =
-  | 'idle'
-  | 'loading_ocr'
-  | 'ocr_running'
-  | 'parsing'
-  | 'done'
-  | 'error';
+function fmt(n: number) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n); }
+function merchantName(desc: string) { return desc.trim().match(/(?:at|@)\s*([^\-|,|–|:]+)/i)?.[1]?.trim() || desc.split(/[-–|:|@]/)[0].trim() || desc; }
+function normalizeMerchantKey(desc: string) { return merchantName(desc).toLowerCase().replace(/\s+/g, ' ').trim(); }
 
-function fmt(n: number) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency', currency: 'IDR', maximumFractionDigits: 0,
-  }).format(n);
-}
-
-function merchantName(description: string): string {
-  // Normalize merchant names by removing common prefixes/suffixes, numbers, and extra spaces
-  return description
-    .toLowerCase()
-    // Remove common banking prefixes/suffixes
-    .replace(/^(transfer|payment|purchase|debit|credit|from|to|atm|online|mobile|web)\s+/i, '')
-    .replace(/\s+(transfer|payment|purchase|debit|credit|from|to|atm|online|mobile|web)$/i, '')
-    // Remove transaction codes, reference numbers, etc.
-    .replace(/\b\d{4,}\b/g, '') // Remove sequences of 4+ digits
-    .replace(/[#*]\w+/g, '') // Remove codes like #ABC123
-    .replace(/\b(ref|trx|txn|id)\s*\d*\b/gi, '') // Remove reference/transaction IDs
-    // Clean up extra spaces
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-const CONFIDENCE_COLOR = {
-  high: '#22c55e',
-  medium: '#f59e0b',
-  low: '#ef4444',
-};
+const CONFIDENCE_COLORS: Record<string, string> = { high: '#22d47a', medium: '#f5a623', low: '#f05252' };
+const APPS = ['Livin by Mandiri','BCA Mobile','BRImo','GoPay','OVO','DANA','ShopeePay','QRIS'];
 
 export default function ScanPage() {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
@@ -47,7 +21,6 @@ export default function ScanPage() {
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState('');
   const [ocrText, setOcrText] = useState('');
-  const [transactions, setTransactions] = useState<ParsedTransaction[]>([]);
   const [editedTxs, setEditedTxs] = useState<(ParsedTransaction & { category_id: number | null })[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [sourceApp, setSourceApp] = useState('');
@@ -58,385 +31,226 @@ export default function ScanPage() {
   const [saved, setSaved] = useState(false);
   const [showRawText, setShowRawText] = useState(false);
   const [duplicates, setDuplicates] = useState<ParsedTransaction[]>([]);
-  const [filteredTxs, setFilteredTxs] = useState<(ParsedTransaction & { category_id: number | null })[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    api.getCategories().then(setCategories).catch(() => {});
-  }, []);
+  useEffect(() => { api.getCategories().then(setCategories).catch(() => {}); }, []);
 
-  const matchCategoryId = useCallback(
-    (hint: string, type: 'income' | 'expense'): number | null => {
-      const cat = categories.find(
-        c => c.name === hint && c.type === type
-      ) || categories.find(
-        c => c.type === type && c.name === 'Other'
-      );
-      return cat?.id ?? null;
-    },
-    [categories]
-  );
+  const matchCategoryId = useCallback((hint: string, type: 'income' | 'expense'): number | null => {
+    return (categories.find(c => c.name === hint && c.type === type) || categories.find(c => c.type === type && c.name === 'Other'))?.id ?? null;
+  }, [categories]);
 
   const processFile = (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      setError('File Must Be Image Type (JPG, PNG, WEBP)');
-      return;
-    }
-    setError('');
-    setSaved(false);
-    setTransactions([]);
-    setEditedTxs([]);
-    setOcrText('');
-    setStatus('idle');
+    if (!file.type.startsWith('image/')) { setError('File must be an image (JPG, PNG, WEBP)'); return; }
+    setError(''); setSaved(false); setEditedTxs([]); setOcrText(''); setStatus('idle');
     const reader = new FileReader();
-    reader.onload = e => {
-      setImageDataUrl(e.target?.result as string);
-      setStatus('idle');
-    };
+    reader.onload = e => { setImageDataUrl(e.target?.result as string); };
     reader.readAsDataURL(file);
   };
-
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processFile(file);
-  };
-
-  const handleDrop = (e: DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) processFile(file);
-  };
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) processFile(e.target.files[0]); };
+  const handleDrop = (e: DragEvent) => { e.preventDefault(); setDragging(false); if (e.dataTransfer.files?.[0]) processFile(e.dataTransfer.files[0]); };
 
   const runScan = async () => {
     if (!imageDataUrl) return;
-    setStatus('loading_ocr');
-    setProgress(5);
-    setProgressLabel('Loading MCR Machine...');
-    setError('');
-
+    setStatus('loading_ocr'); setProgress(5); setProgressLabel('Loading OCR engine…'); setError('');
     try {
-      // Dynamically import Tesseract only on client
       const { createWorker } = await import('tesseract.js');
-
-      setStatus('ocr_running');
-      setProgressLabel('Initializing Tesseract...');
-      setProgress(15);
-
-      const worker = await createWorker(['ind', 'eng'], 1, {
+      setStatus('ocr_running'); setProgressLabel('Initializing…'); setProgress(15);
+      const worker = await createWorker(['ind','eng'], 1, {
         logger: (m: { status: string; progress: number }) => {
-          if (m.status === 'recognizing text') {
-            const pct = Math.round(15 + m.progress * 70);
-            setProgress(pct);
-            setProgressLabel(`Reading text... ${Math.round(m.progress * 100)}%`);
-          } else if (m.status.includes('load')) {
-            setProgressLabel(`Loading language model...`);
-          }
+          if (m.status === 'recognizing text') { setProgress(Math.round(15+m.progress*70)); setProgressLabel(`Reading text… ${Math.round(m.progress*100)}%`); }
+          else if (m.status.includes('load')) setProgressLabel('Loading language model…');
         },
       });
-
-      setProgressLabel('Analyzing image...');
+      setProgressLabel('Analyzing image…');
       const result = await worker.recognize(imageDataUrl);
       await worker.terminate();
-
       const raw = result.data.text;
       setOcrText(raw);
-
-      setStatus('parsing');
-      setProgress(90);
-      setProgressLabel('Identifying transactions...');
-
-      // Small delay so UI updates
+      setStatus('parsing'); setProgress(90); setProgressLabel('Identifying transactions…');
       await new Promise(r => setTimeout(r, 300));
-
+      const today = new Date().toISOString().split('T')[0];
       const parsed = parseOCRText(raw);
+      const olderTxs = parsed.transactions.filter(tx => tx.date !== today);
       setSourceApp(parsed.source_app);
-      setNotes(parsed.notes);
-      setTransactions(parsed.transactions);
-
-      // Check for duplicates - get ALL transactions to ensure comprehensive checking
-      setProgressLabel('Checking for duplicates...');
-      const existingTxs = await api.getTransactions({
-        limit: '10000', // Get many more transactions to check against
-      });
-
-      const duplicates: ParsedTransaction[] = [];
-      const uniqueTxs = parsed.transactions.filter(tx => {
-        const isDuplicate = existingTxs.some((existing: any) => {
-          // Normalize descriptions for comparison
-          const txMerchant = merchantName(tx.description);
-          const existingMerchant = merchantName(existing.description);
-
-          // Check merchant match (exact or very similar)
-          const merchantMatch = txMerchant === existingMerchant ||
-            txMerchant.includes(existingMerchant) ||
-            existingMerchant.includes(txMerchant);
-
-          // Amount match with percentage tolerance (2% or max 1000 difference)
-          const amountDiff = Math.abs(tx.amount - existing.amount);
-          const amountTolerance = Math.max(tx.amount * 0.02, 1000); // 2% or 1000 max
-          const amountMatch = amountDiff <= amountTolerance;
-
-          // Type match (income vs expense)
-          const typeMatch = tx.type === existing.type;
-
-          // Debug logging for troubleshooting
-          if (merchantMatch && amountMatch && typeMatch) {
-            console.log('Duplicate found:', {
-              scanned: { desc: tx.description, amount: tx.amount, date: tx.date },
-              existing: { desc: existing.description, amount: existing.amount, date: existing.date }
-            });
-          }
-
-          return merchantMatch && amountMatch && typeMatch;
-        });
-
-        if (isDuplicate) {
-          duplicates.push(tx);
-          return false;
+      setNotes(parsed.notes + (olderTxs.length ? ` ${olderTxs.length} older transaction(s) from before today were skipped.` : ''));
+      setProgressLabel('Checking for duplicates…');
+      const existingTxs = await api.getTransactions({ limit: '10000' });
+      const vendorCategoryMap = new Map<string, number>();
+      for (const e of existingTxs as Array<{ description: string; category_id: number | null; type: 'income' | 'expense' }>) {
+        if (!e.category_id) continue;
+        const key = `${e.type}|${normalizeMerchantKey(e.description)}`;
+        if (!vendorCategoryMap.has(key)) {
+          vendorCategoryMap.set(key, e.category_id);
         }
+      }
+      const dups: ParsedTransaction[] = [];
+      const todayTxs = parsed.transactions.filter(tx => tx.date === today);
+      const unique = todayTxs.filter(tx => {
+        const isDup = existingTxs.some((e: { description: string; amount: number; type: string; date: string | null }) => {
+          const m1 = normalizeMerchantKey(tx.description);
+          const m2 = normalizeMerchantKey(e.description);
+          const merchantMatch = m1 === m2 || m1.includes(m2) || m2.includes(m1);
+          const amountMatch = Math.abs(tx.amount - e.amount) <= Math.max(tx.amount * 0.02, 1000);
+          const existingDate = typeof e.date === 'string' ? e.date.split('T')[0] : '';
+          const dateMatch = tx.date === existingDate;
+          return merchantMatch && amountMatch && tx.type === e.type && dateMatch;
+        });
+        if (isDup) { dups.push(tx); return false; }
         return true;
       });
-
-      setDuplicates(duplicates);
-
-      // Attach real category_id from user's categories
-      const withIds = uniqueTxs.map(tx => ({
-        ...tx,
-        category_id: matchCategoryId(tx.category_hint, tx.type),
+      setDuplicates(dups);
+      setEditedTxs(unique.map(tx => {
+        const vendorKey = `${tx.type}|${normalizeMerchantKey(tx.description)}`;
+        const categoryId = vendorCategoryMap.get(vendorKey) ?? matchCategoryId(tx.category_hint, tx.type);
+        return { ...tx, category_id: categoryId };
       }));
-      setEditedTxs(withIds);
-      setFilteredTxs(withIds);
-
-      setProgress(100);
-      setStatus('done');
-    } catch (err: unknown) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : 'Failed to run OCR');
-      setStatus('error');
-    }
+      setProgress(100); setStatus('done');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Failed to run OCR'); setStatus('error'); }
   };
 
-  const updateTx = (i: number, field: string, value: string | number | null) => {
-    setEditedTxs(prev =>
-      prev.map((tx, idx) => idx === i ? { ...tx, [field]: value } : tx)
-    );
-  };
-
+  const updateTx = (i: number, field: string, value: string | number | null) => setEditedTxs(prev => prev.map((tx, idx) => idx === i ? { ...tx, [field]: value } : tx));
   const removeTx = (i: number) => setEditedTxs(prev => prev.filter((_, idx) => idx !== i));
 
   const handleSaveAll = async () => {
     if (!editedTxs.length) return;
     setSaving(true);
     try {
-      await Promise.all(
-        editedTxs.map(tx =>
-          api.createTransaction({
-            amount: tx.amount,
-            type: tx.type,
-            description: tx.description,
-            date: tx.date,
-            category_id: tx.category_id,
-          })
-        )
-      );
-      setSaved(true);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to save transactions');
-    } finally {
-      setSaving(false);
-    }
+      await Promise.all(editedTxs.map(tx => api.createTransaction({ amount: tx.amount, type: tx.type, description: tx.description, date: tx.date, category_id: tx.category_id })));
+      setSaved(true); showToast(`${editedTxs.length} transactions saved!`);
+    } catch { showToast('Failed to save transactions', 'error'); }
+    finally { setSaving(false); }
   };
 
-  const reset = () => {
-    setImageDataUrl(null);
-    setStatus('idle');
-    setTransactions([]);
-    setEditedTxs([]);
-    setFilteredTxs([]);
-    setDuplicates([]);
-    setOcrText('');
-    setError('');
-    setSaved(false);
-    setProgress(0);
-  };
-
-  const isScanning = status === 'loading_ocr' || status === 'ocr_running' || status === 'parsing';
+  const reset = () => { setImageDataUrl(null); setStatus('idle'); setEditedTxs([]); setDuplicates([]); setOcrText(''); setError(''); setSaved(false); setProgress(0); };
+  const isScanning = ['loading_ocr','ocr_running','parsing'].includes(status);
 
   return (
-    <div className="space-y-6 max-w-5xl">
-      {/* Header */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 960 }}>
       <div>
-        <h1 className="text-2xl font-bold">Scan Transactions</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-          Upload a screenshot of Livin by Mandiri, QRIS, or another bank app — local OCR will read and categorize transactions automatically, without an external API.
-</p>
-
-
+        <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Scan Transactions</h1>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 600 }}>
+          Upload a screenshot from any Indonesian banking app. Local OCR reads and categorizes transactions — nothing is sent to any server.
+        </p>
       </div>
 
       {/* App badges */}
-      <div className="flex flex-wrap gap-2">
-        {['Livin by Mandiri', 'BCA Mobile', 'BRImo', 'GoPay', 'OVO', 'DANA', 'ShopeePay', 'QRIS'].map(app => (
-          <span key={app} className="text-xs px-3 py-1 rounded-full"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-            {app}
-          </span>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+        {APPS.map(app => (
+          <span key={app} style={{ fontSize: 11, padding: '4px 10px', borderRadius: 99, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)', fontWeight: 500 }}>{app}</span>
         ))}
+        <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 99, background: 'var(--accent-glow)', border: '1px solid rgba(91,110,245,0.25)', color: 'var(--accent-2)', fontWeight: 600 }}>🔒 100% local</span>
       </div>
 
-      {/* Upload Zone */}
+      {/* Upload or Preview */}
       {!imageDataUrl ? (
-        <div
-          onClick={() => fileRef.current?.click()}
-          onDrop={handleDrop}
+        <div onClick={() => fileRef.current?.click()} onDrop={handleDrop}
           onDragOver={e => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
-          className="relative rounded-2xl cursor-pointer transition-all flex flex-col items-center justify-center gap-5 py-24"
           style={{
-            border: `2px dashed ${dragging ? 'var(--accent)' : 'var(--border)'}`,
-            background: dragging ? '#6366f108' : 'var(--surface)',
-          }}
-        >
-          <div className="absolute inset-0 rounded-2xl opacity-[0.025]" style={{
-            backgroundImage: 'linear-gradient(var(--accent) 1px,transparent 1px),linear-gradient(90deg,var(--accent) 1px,transparent 1px)',
-            backgroundSize: '32px 32px',
-          }} />
-          <div className="relative z-10 flex flex-col items-center gap-4 text-center">
-            <div className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Upload</div>
-            <div>
-              <p className="font-semibold text-lg">Drag & drop screenshot here</p>
-              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>or click to select file · JPG, PNG, WEBP</p>
-            </div>
-            <div className="flex items-center gap-2 text-xs px-4 py-2 rounded-full"
-              style={{ background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-              Processed locally in the browser — not sent to any server
-            </div>
+            position: 'relative', borderRadius: 16, cursor: 'pointer',
+            border: `2px dashed ${dragging ? 'var(--accent)' : 'var(--border-2)'}`,
+            background: dragging ? 'var(--accent-glow)' : 'var(--surface)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            justifyContent: 'center', gap: 16, padding: '80px 40px',
+            transition: 'all 0.2s ease',
+          }}>
+          <div style={{ position: 'absolute', inset: 0, borderRadius: 14, opacity: 0.02, backgroundImage: 'linear-gradient(var(--accent) 1px,transparent 1px),linear-gradient(90deg,var(--accent) 1px,transparent 1px)', backgroundSize: '32px 32px', pointerEvents: 'none' }} />
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--surface-2)', border: '1px solid var(--border-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>↑</div>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 5 }}>Drop your screenshot here</p>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>or click to browse · JPG, PNG, WEBP</p>
           </div>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
         </div>
       ) : (
-        <div className="grid grid-cols-5 gap-6">
-          {/* Screenshot preview */}
-          <div className="col-span-2 rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
-              <span className="text-sm font-semibold">Screenshot</span>
-              <button onClick={reset} className="text-xs px-2 py-1 rounded-md"
-                style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
-                Change
-              </button>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 3fr', gap: 16 }}>
+          {/* Screenshot Preview */}
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+            <div style={{ padding: '13px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Screenshot</span>
+              <button onClick={reset} style={{ fontSize: 11, padding: '5px 10px', borderRadius: 7, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Change</button>
             </div>
-            <div className="p-3">
+            <div style={{ padding: 12 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={imageDataUrl} alt="preview" className="w-full rounded-xl object-contain max-h-[520px]" />
+              <img src={imageDataUrl} alt="preview" style={{ width: '100%', borderRadius: 10, objectFit: 'contain', maxHeight: 520 }} />
             </div>
           </div>
 
           {/* Right panel */}
-          <div className="col-span-3 space-y-4">
-            {/* Scan button / progress */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {status === 'idle' && (
-              <div className="rounded-xl p-6 flex flex-col items-center gap-4 text-center"
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                    <div>
-                  <p className="font-semibold">Ready for Analysis</p>
-                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-                    Tesseract OCR will read the text from the screenshot and detect transactions
-                  </p>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 28, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center' }}>
+                <div style={{ width: 48, height: 48, borderRadius: 13, background: 'var(--accent-glow)', border: '1px solid rgba(91,110,245,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>⊙</div>
+                <div>
+                  <p style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 5 }}>Ready to scan</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Tesseract OCR will read and extract transaction data from your screenshot</p>
                 </div>
-                <button onClick={runScan}
-                  className="px-8 py-3 rounded-xl font-bold text-white text-sm"
-                  style={{ background: 'var(--accent)' }}>
+                <button onClick={runScan} style={{ padding: '11px 32px', borderRadius: 11, fontWeight: 700, fontSize: 14, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 20px rgba(91,110,245,0.35)', letterSpacing: '-0.01em' }}>
                   Start Scan
                 </button>
               </div>
             )}
 
             {isScanning && (
-              <div className="rounded-xl p-6 space-y-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-full border-2 border-current animate-spin" />
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 28, height: 28, border: '2.5px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
                   <div>
-                    <p className="font-semibold text-sm">Analyzing...</p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{progressLabel}</p>
+                    <p style={{ fontSize: 13, fontWeight: 600 }}>Analyzing image…</p>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{progressLabel}</p>
                   </div>
                 </div>
-                <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-2)' }}>
-                  <div className="h-full rounded-full transition-all duration-300"
-                    style={{ width: `${progress}%`, background: 'var(--accent)' }} />
+                <div style={{ height: 5, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', borderRadius: 99, background: 'linear-gradient(90deg, var(--accent), var(--purple))', width: `${progress}%`, transition: 'width 0.4s ease' }} />
                 </div>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {progress}% — OCR is running in your browser, no data is sent outside
-                </p>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{progress}% · Processing locally in your browser</p>
               </div>
             )}
 
             {status === 'done' && (
-              <div className="rounded-xl px-5 py-4 flex items-center justify-between"
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <p className="font-semibold text-sm">
+                  <p style={{ fontSize: 13, fontWeight: 600 }}>
                     {editedTxs.length === 0 ? 'No transactions found' : `${editedTxs.length} transactions detected`}
                   </p>
-                  {sourceApp && <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Source: {sourceApp}</p>}
-                  {notes && <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{notes}</p>}
+                  {sourceApp && <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>Source: {sourceApp}</p>}
+                  {notes && <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{notes}</p>}
                 </div>
-                <button onClick={runScan} className="text-xs px-3 py-1.5 rounded-lg ml-4 flex-shrink-0"
-                  style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
-                  Scan Again
-                </button>
+                <button onClick={runScan} style={{ fontSize: 11, padding: '6px 12px', borderRadius: 8, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Scan Again</button>
               </div>
             )}
 
             {error && (
-              <div className="rounded-xl px-4 py-3 text-sm"
-                style={{ background: '#ef444415', border: '1px solid #ef444430', color: 'var(--red)' }}>
-                Error: {error}
+              <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--red-muted)', border: '1px solid rgba(240,82,82,0.25)', color: 'var(--red)', fontSize: 13 }}>
+                {error}
               </div>
             )}
 
-            {/* Duplicates filtered out */}
             {duplicates.length > 0 && (
-              <div className="rounded-xl px-4 py-3"
-                style={{ background: '#f59e0b15', border: '1px solid #f59e0b30' }}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm font-semibold" style={{ color: '#f59e0b' }}>⚠️ Duplicates Filtered</span>
-                  <span className="text-xs px-2 py-1 rounded" style={{ background: '#f59e0b20', color: '#f59e0b' }}>
-                    {duplicates.length} transaction{duplicates.length > 1 ? 's' : ''} removed
-                  </span>
+              <div style={{ padding: '14px 16px', borderRadius: 12, background: 'var(--amber-muted)', border: '1px solid rgba(245,166,35,0.25)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--amber)' }}>Duplicates Filtered</span>
+                  <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 5, background: 'rgba(245,166,35,0.2)', color: 'var(--amber)', fontWeight: 700 }}>{duplicates.length} removed</span>
                 </div>
-                <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-                  These transactions matched existing ones in your database (same merchant, similar amount, same type):
-                </p>
-                <div className="space-y-1 max-h-32 overflow-y-auto">
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>These matched existing entries (same merchant + amount + type + date):</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 120, overflowY: 'auto' }}>
                   {duplicates.map((tx, i) => (
-                    <div key={i} className="text-xs flex items-center justify-between py-1 px-2 rounded"
-                      style={{ background: 'var(--surface-2)' }}>
-                      <div className="flex-1">
-                        <span className="font-medium">{merchantName(tx.description)}</span>
-                        <span className="ml-2 text-gray-500">({tx.description})</span>
-                      </div>
-                      <span className="font-mono ml-2">{fmt(tx.amount)}</span>
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '5px 8px', borderRadius: 6, background: 'var(--surface-2)' }}>
+                      <span style={{ fontWeight: 500 }}>{merchantName(tx.description)}</span>
+                      <span style={{ fontFamily: 'var(--font-mono)' }}>{fmt(tx.amount)}</span>
                     </div>
                   ))}
                 </div>
-                <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-                  💡 Tip: Recurring purchases at the same vendor are now allowed on different dates.
-                </p>
               </div>
             )}
 
-            {/* OCR Raw text toggle */}
             {ocrText && (
               <div>
-                <button onClick={() => setShowRawText(v => !v)}
-                  className="text-xs px-3 py-1.5 rounded-lg"
-                  style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
-                  {showRawText ? 'Hide raw OCR text' : 'Show raw OCR text'}
+                <button onClick={() => setShowRawText(v => !v)} style={{ fontSize: 11, padding: '6px 12px', borderRadius: 8, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                  {showRawText ? 'Hide' : 'Show'} raw OCR text
                 </button>
                 {showRawText && (
-                  <pre className="mt-2 text-xs p-3 rounded-xl overflow-auto max-h-40 font-mono"
-                    style={{ background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)', whiteSpace: 'pre-wrap' }}>
+                  <pre style={{ marginTop: 8, fontSize: 11, padding: 12, borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)', overflow: 'auto', maxHeight: 140, fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
                     {ocrText}
                   </pre>
                 )}
@@ -446,100 +260,48 @@ export default function ScanPage() {
         </div>
       )}
 
-      {/* Editable transaction review */}
+      {/* Editable transactions */}
       {editedTxs.length > 0 && !saved && (
-        <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-          <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+          <div style={{ padding: '16px 22px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <h2 className="font-bold">Check & Edit Transactions</h2>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                Correct any errors, then save all at once
-              </p>
+              <h2 style={{ fontSize: 14, fontWeight: 700, letterSpacing: '-0.02em' }}>Review & Edit</h2>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>Verify each transaction before saving</p>
             </div>
-            <button onClick={handleSaveAll} disabled={saving}
-              className="px-6 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-60"
-              style={{ background: '#22c55e' }}>
-              {saving ? 'Saving...' : `Save All (${editedTxs.length})`}
+            <button onClick={handleSaveAll} disabled={saving} style={{ padding: '10px 22px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--green)', color: 'white', border: 'none', opacity: saving ? 0.6 : 1, boxShadow: '0 4px 16px rgba(34,212,122,0.3)' }}>
+              {saving ? 'Saving…' : `Save All (${editedTxs.length})`}
             </button>
           </div>
-
           <div>
             {editedTxs.map((tx, i) => (
-              <div key={i} className="px-6 py-4 space-y-3"
-                style={{ borderBottom: i < editedTxs.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                {/* Row 1: description + confidence + remove */}
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ background: CONFIDENCE_COLOR[tx.confidence] }} />
-                  <input value={tx.description}
-                    onChange={e => updateTx(i, 'description', e.target.value)}
-                    className="flex-1 text-sm font-medium"
-                    style={{ background: 'transparent', border: 'none', padding: 0, borderRadius: 0, borderBottom: '1px solid var(--border)' }}
-                  />
-                  <span className="text-xs flex-shrink-0" style={{ color: CONFIDENCE_COLOR[tx.confidence] }}>
-                    {tx.confidence}
-                  </span>
-                  <button onClick={() => removeTx(i)} style={{ color: 'var(--red)', flexShrink: 0 }}>Remove</button>
+              <div key={i} style={{ padding: '16px 22px', borderBottom: i < editedTxs.length-1 ? '1px solid var(--border)' : 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: CONFIDENCE_COLORS[tx.confidence], flexShrink: 0 }} />
+                  <input value={tx.description} onChange={e => updateTx(i,'description',e.target.value)}
+                    style={{ flex: 1, fontSize: 13, fontWeight: 600, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', borderRadius: 0, padding: '2px 0', color: 'var(--text)' }} />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: CONFIDENCE_COLORS[tx.confidence], textTransform: 'uppercase' }}>{tx.confidence}</span>
+                  <button onClick={() => removeTx(i)} style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, background: 'var(--red-muted)', color: 'var(--red)', border: '1px solid rgba(240,82,82,0.2)', fontWeight: 600 }}>Remove</button>
                 </div>
-
-                {/* Row 2: type toggle | amount | category | date */}
-                <div className="grid grid-cols-4 gap-2">
-                  <div className="flex gap-1">
-                    {(['expense', 'income'] as const).map(t => (
-                      <button key={t} onClick={() => {
-                        updateTx(i, 'type', t);
-                        // Re-match category when type changes
-                        const newCat = matchCategory(tx.description);
-                        const matched = categories.find(c => c.name === newCat.category && c.type === t)
-                          || categories.find(c => c.type === t && c.name === 'Other');
-                        updateTx(i, 'category_id', matched?.id ?? null);
-                      }}
-                        className="flex-1 py-1.5 rounded-lg text-xs font-semibold"
-                        style={{
-                          background: tx.type === t ? (t === 'income' ? '#22c55e' : '#ef4444') : 'var(--surface-2)',
-                          color: tx.type === t ? 'white' : 'var(--text-muted)',
-                        }}>
-                        {t === 'income' ? '↑ Income' : '↓ Expense'}
+                <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr 1fr', gap: 8 }}>
+                  <div style={{ display: 'flex', background: 'var(--surface-2)', borderRadius: 8, padding: 3, border: '1px solid var(--border)', gap: 3 }}>
+                    {(['expense','income'] as const).map(t => (
+                      <button key={t} onClick={() => { updateTx(i,'type',t); const c = matchCategory(tx.description); updateTx(i,'category_id', (categories.find(c2 => c2.name===c.category && c2.type===t) || categories.find(c2 => c2.type===t && c2.name==='Other'))?.id ?? null); }} style={{ padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: tx.type===t ? (t==='income'?'var(--green)':'var(--red)') : 'transparent', color: tx.type===t?'white':'var(--text-muted)', border: 'none', whiteSpace: 'nowrap' }}>
+                        {t === 'income' ? '↑ In' : '↓ Out'}
                       </button>
                     ))}
                   </div>
-
-                  <input type="number" value={tx.amount}
-                    onChange={e => updateTx(i, 'amount', Number(e.target.value))}
-                    className="text-sm font-mono" style={{ padding: '6px 10px' }}
-                  />
-
-                  <select value={tx.category_id ?? ''}
-                    onChange={e => updateTx(i, 'category_id', e.target.value ? Number(e.target.value) : null)}
-                    className="text-sm" style={{ padding: '6px 10px' }}>
+                  <input type="number" value={tx.amount} onChange={e => updateTx(i,'amount',Number(e.target.value))} style={{ fontSize: 13, fontFamily: 'var(--font-mono)', padding: '7px 10px' }} />
+                  <select value={tx.category_id ?? ''} onChange={e => updateTx(i,'category_id',e.target.value ? Number(e.target.value) : null)} style={{ fontSize: 12, padding: '7px 10px' }}>
                     <option value="">No category</option>
-                    {categories.filter(c => c.type === tx.type).map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
+                    {categories.filter(c => c.type===tx.type).map(c => <option key={c.id} value={c.id}>{translateCategory(c.name)}</option>)}
                   </select>
-
-                  <input type="date" value={tx.date}
-                    onChange={e => updateTx(i, 'date', e.target.value)}
-                    className="text-sm" style={{ padding: '6px 10px' }}
-                  />
+                  <input type="date" value={tx.date} onChange={e => updateTx(i,'date',e.target.value)} style={{ fontSize: 12, padding: '7px 10px' }} />
                 </div>
-
-                {/* Row 3: summary pill */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs px-2.5 py-1 rounded-full font-mono font-semibold"
-                    style={{ background: tx.type === 'income' ? '#22c55e20' : '#ef444420', color: tx.type === 'income' ? 'var(--green)' : 'var(--red)' }}>
-                    {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount)}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 6, fontFamily: 'var(--font-mono)', fontWeight: 700, background: tx.type==='income'?'var(--green-muted)':'var(--red-muted)', color: tx.type==='income'?'var(--green)':'var(--red)' }}>
+                    {tx.type==='income'?'+':'−'}{fmt(tx.amount)}
                   </span>
-                  {tx.category_id && (
-                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      → {categories.find(c => c.id === tx.category_id)?.name}
-                    </span>
-                  )}
-                  {tx.raw_merchant && (
-                    <span className="text-xs ml-auto font-mono" style={{ color: 'var(--text-muted)' }}>
-                      OCR: &quot;{tx.raw_merchant}&quot;
-                    </span>
-                  )}
+                  {tx.category_id && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>→ {translateCategory(categories.find(c=>c.id===tx.category_id)?.name||'')}</span>}
                 </div>
               </div>
             ))}
@@ -549,38 +311,29 @@ export default function ScanPage() {
 
       {/* Success */}
       {saved && (
-        <div className="rounded-2xl p-10 text-center" style={{ background: 'var(--surface)', border: '1px solid #22c55e40' }}>
-          <div className="text-sm mb-4 uppercase tracking-wide" style={{ color: 'var(--green)' }}>Success</div>
-          <h2 className="font-bold text-xl" style={{ color: 'var(--green)' }}>Successfully Saved!</h2>
-          <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>
-            {editedTxs.length} transactions added to your financial history
-          </p>
-          <div className="flex gap-3 justify-center mt-6">
-            <button onClick={reset} className="px-6 py-2.5 rounded-xl text-sm font-bold text-white"
-              style={{ background: 'var(--accent)' }}>
-              Scan Again
-            </button>
-            <a href="/dashboard/transactions"
-              className="px-6 py-2.5 rounded-xl text-sm font-semibold inline-block"
-              style={{ background: 'var(--surface-2)', color: 'var(--text)' }}>
-              View Transactions
-            </a>
+        <div style={{ background: 'var(--surface)', border: '1px solid rgba(34,212,122,0.25)', borderRadius: 14, padding: '48px 40px', textAlign: 'center' }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--green-muted)', border: '1px solid rgba(34,212,122,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 20px' }}>✓</div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.04em', color: 'var(--green)', marginBottom: 8 }}>Saved successfully!</h2>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>{editedTxs.length} transactions added to your financial history</p>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+            <button onClick={reset} style={{ padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)' }}>Scan Again</button>
+            <a href="/dashboard/transactions" style={{ padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>View Transactions →</a>
           </div>
         </div>
       )}
 
       {/* Tips */}
       {!imageDataUrl && (
-        <div className="grid grid-cols-3 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
           {[
-            { title: 'Best Screenshot Tips', desc: 'Use the transactions history page. Ensure the amount is clearly visible. Avoid cropped or blurry screenshots.' },
-            { title: 'Local OCR — 100% Private', desc: 'Using Tesseract.js that runs directly in your browser. Screenshots are never sent to any server.' },
-            { title: 'Always Editable', desc: 'After scanning, you can correct the category, amount, or date before saving. OCR results can be viewed in "raw text".' },
+            { icon: '📱', title: 'Best Screenshot Tips', desc: 'Use the transactions history page. Ensure amounts are clearly visible. Avoid blurry or cropped images.' },
+            { icon: '🔒', title: 'Fully Private', desc: 'Tesseract.js runs directly in your browser. Screenshots are never uploaded to any server.' },
+            { icon: '✏️', title: 'Always Editable', desc: 'After scanning, correct categories, amounts, or dates before saving. View raw OCR text if needed.' },
           ].map(tip => (
-            <div key={tip.title} className="rounded-xl p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-              <div className="text-xs uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>Tip</div>
-              <p className="text-sm font-semibold">{tip.title}</p>
-              <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--text-muted)' }}>{tip.desc}</p>
+            <div key={tip.title} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
+              <div style={{ fontSize: 20, marginBottom: 10 }}>{tip.icon}</div>
+              <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 6 }}>{tip.title}</p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.55 }}>{tip.desc}</p>
             </div>
           ))}
         </div>

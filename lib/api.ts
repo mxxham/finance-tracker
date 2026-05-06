@@ -52,6 +52,8 @@ export const api = {
     const qs = params ? '?' + new URLSearchParams(params).toString() : '';
     return request(`/budgets${qs}`);
   },
+  deleteBudget: (id: number) =>
+    request(`/budgets/${id}`, { method: 'DELETE' }),
   createBudget: (body: object) =>
     request('/budgets', { method: 'POST', body: JSON.stringify(body) }),
 };

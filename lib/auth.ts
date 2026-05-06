@@ -1,7 +1,18 @@
 import jwt from 'jsonwebtoken';
 import { NextRequest } from 'next/server';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET environment variable is not set. This is required in production.');
+  }
+  console.warn('[auth] WARNING: JWT_SECRET is not set. Using insecure fallback. Set JWT_SECRET in your .env file.');
+}
+
+const SECRET = JWT_SECRET || 'dev-only-insecure-fallback-key-do-not-use-in-prod';
+
+export const MIN_PASSWORD_LENGTH = 8;
 
 export interface JWTPayload {
   userId: number;
@@ -9,11 +20,11 @@ export interface JWTPayload {
 }
 
 export function signToken(payload: JWTPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign(payload, SECRET, { expiresIn: '7d' });
 }
 
 export function verifyToken(token: string): JWTPayload {
-  return jwt.verify(token, JWT_SECRET) as JWTPayload;
+  return jwt.verify(token, SECRET) as JWTPayload;
 }
 
 export function getAuthUser(req: NextRequest): JWTPayload | null {

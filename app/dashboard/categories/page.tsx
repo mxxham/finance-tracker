@@ -1,166 +1,163 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
+import { showToast } from '@/components/Toast';
+import { translateCategory } from '@/lib/categories';
 
 interface Category { id: number; name: string; color: string; icon: string; type: string; }
 
-const COLORS = ['#6366f1','#22c55e','#ef4444','#f59e0b','#3b82f6','#ec4899','#a855f7','#10b981','#f97316','#06b6d4','#84cc16','#e11d48'];
+const COLORS = ['#6366f1','#22d47a','#f05252','#f5a623','#3b82f6','#ec4899','#a78bfa','#10b981','#f97316','#06b6d4','#84cc16','#e11d48','#14b8a6','#8b5cf6','#fb923c'];
+
+function Skeleton({ w, h, r = 6 }: { w?: number | string; h: number; r?: number }) {
+  return <div className="skeleton" style={{ width: w || '100%', height: h, borderRadius: r }} />;
+}
+const LABEL_STYLE: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, letterSpacing: '0.02em', textTransform: 'uppercase' };
+const MODAL_STYLE: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', animation: 'fadeIn 0.15s ease both' };
+const MODAL_BOX: React.CSSProperties = { width: '100%', maxWidth: 420, borderRadius: 20, background: 'var(--surface)', border: '1px solid var(--border-2)', padding: 28, boxShadow: '0 32px 80px rgba(0,0,0,0.7)', animation: 'scaleIn 0.2s cubic-bezier(0.34,1.2,0.64,1) both', display: 'flex', flexDirection: 'column', gap: 16 };
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [selected, setSelected] = useState<Category | null>(null);
   const [form, setForm] = useState({ name: '', color: '#6366f1', icon: 'tag', type: 'expense' });
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    try {
-      const c = await api.getCategories();
-      setCategories(c);
-    } catch (e) { console.error(e); }
+    setLoading(true);
+    try { const c = await api.getCategories(); setCategories(c); }
+    catch { showToast('Failed to load categories', 'error'); }
+    finally { setLoading(false); }
   }, []);
-
   useEffect(() => { load(); }, [load]);
 
-  const openAdd = () => {
-    setSelectedCategory(null);
-    setForm({ name: '', color: '#6366f1', icon: 'tag', type: 'expense' });
-    setShowModal(true);
-  };
-
-  const openEdit = (category: Category) => {
-    setSelectedCategory(category);
-    setForm({ name: category.name, color: category.color, icon: category.icon, type: category.type });
-    setShowModal(true);
-  };
+  const openAdd = () => { setSelected(null); setForm({ name: '', color: '#6366f1', icon: 'tag', type: 'expense' }); setShowModal(true); };
+  const openEdit = (c: Category) => { setSelected(c); setForm({ name: c.name, color: c.color, icon: c.icon, type: c.type }); setShowModal(true); };
 
   const handleSave = async () => {
-    if (!form.name.trim()) return;
-    if (selectedCategory) {
-      await api.updateCategory(selectedCategory.id, form);
-    } else {
-      await api.createCategory(form);
-    }
-    setShowModal(false);
-    setSelectedCategory(null);
-    setForm({ name: '', color: '#6366f1', icon: 'tag', type: 'expense' });
-    load();
+    if (!form.name.trim()) { showToast('Enter a name', 'error'); return; }
+    try {
+      if (selected) { await api.updateCategory(selected.id, form); showToast('Category updated'); }
+      else { await api.createCategory(form); showToast('Category created'); }
+      setShowModal(false); load();
+    } catch { showToast('Failed to save', 'error'); }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this category?')) return;
-    await api.deleteCategory(id);
-    load();
+    if (!confirm('Delete this category? Transactions using it will be uncategorized.')) return;
+    try { await api.deleteCategory(id); showToast('Deleted', 'info'); load(); }
+    catch { showToast('Failed to delete', 'error'); }
   };
 
   const income = categories.filter(c => c.type === 'income');
   const expense = categories.filter(c => c.type === 'expense');
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
         <div>
-          <h1 className="text-2xl font-bold">Categories</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{categories.length} categories</p>
+          <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Categories</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{categories.length} categories</p>
         </div>
-        <button onClick={openAdd}
-          className="px-5 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--accent)' }}>
+        <button onClick={openAdd} style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)' }}>
           + New Category
         </button>
       </div>
 
-      {(['income', 'expense'] as const).map(type => {
+      {(['expense', 'income'] as const).map(type => {
         const cats = type === 'income' ? income : expense;
         return (
           <div key={type}>
-            <h2 className="text-xs font-semibold uppercase tracking-widest mb-3 px-1"
-              style={{ color: type === 'income' ? 'var(--green)' : 'var(--red)' }}>
-              {type}
-            </h2>
-            <div className="grid grid-cols-3 gap-3">
-              {cats.map(c => (
-                <div key={c.id} className="flex items-center gap-3 p-4 rounded-xl"
-                  style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-                    style={{ background: c.color }}>
-                    {c.name[0].toUpperCase()}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: type === 'income' ? 'var(--green)' : 'var(--red)' }}>{type}</span>
+              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{cats.length} categories</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+              {loading ? Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Skeleton w={38} h={38} r={10} />
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <Skeleton w={80} h={12} />
+                    <Skeleton w={50} h={9} />
                   </div>
-                  <div className="min-w-0">
-                    <p className="font-medium text-sm truncate">{c.name}</p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <div className="w-2 h-2 rounded-full" style={{ background: c.color }} />
-                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{c.color}</span>
+                </div>
+              )) : cats.length === 0 ? (
+                <div style={{ gridColumn: '1/-1', background: 'var(--surface)', border: '1px dashed var(--border)', borderRadius: 12, padding: '28px 20px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>No {type} categories yet</div>
+                </div>
+              ) : cats.map(c => (
+                <div key={c.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 14, display: 'flex', alignItems: 'center', gap: 10, transition: 'border-color 0.15s ease' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-2)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'}>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: `${c.color}22`, border: `1px solid ${c.color}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: c.color, flexShrink: 0 }}>
+                    {translateCategory(c.name)[0]}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{translateCategory(c.name)}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>
+                      <div style={{ width: 7, height: 7, borderRadius: '50%', background: c.color }} />
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{c.color}</span>
                     </div>
                   </div>
-                  <div className="ml-auto flex items-center gap-2">
-                    <button onClick={() => openEdit(c)}
-                      className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
-                      Edit
-                    </button>
-                    <button onClick={() => handleDelete(c.id)}
-                      className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--surface-2)', color: 'var(--red)' }}>
-                      Del
-                    </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+                    <button onClick={() => openEdit(c)} style={{ fontSize: 10, padding: '4px 8px', borderRadius: 5, background: 'var(--surface-2)', color: 'var(--text-soft)', border: '1px solid var(--border)', fontWeight: 600 }}>Edit</button>
+                    <button onClick={() => handleDelete(c.id)} style={{ fontSize: 10, padding: '4px 8px', borderRadius: 5, background: 'var(--red-muted)', color: 'var(--red)', border: '1px solid rgba(240,82,82,0.2)', fontWeight: 600 }}>Del</button>
                   </div>
                 </div>
               ))}
-              {cats.length === 0 && (
-                <div className="col-span-3 py-8 text-center text-sm rounded-xl"
-                  style={{ color: 'var(--text-muted)', background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                  No {type} categories yet
-                </div>
-              )}
             </div>
           </div>
         );
       })}
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
-          <div className="w-full max-w-sm rounded-2xl p-6 space-y-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <h2 className="font-bold text-lg">{selectedCategory ? 'Edit Category' : 'New Category'}</h2>
-
-            <div className="flex gap-2">
-              {(['expense', 'income'] as const).map(t => (
-                <button key={t} onClick={() => setForm(f => ({ ...f, type: t }))}
-                  className="flex-1 py-2 rounded-lg text-sm font-medium capitalize transition-all"
-                  style={{
-                    background: form.type === t ? (t === 'income' ? 'var(--green)' : 'var(--red)') : 'var(--surface-2)',
-                    color: form.type === t ? 'white' : 'var(--text-muted)'
-                  }}>
-                  {t}
-                </button>
+        <div style={MODAL_STYLE} onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
+          <div style={MODAL_BOX}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h2 style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.03em' }}>{selected ? 'Edit Category' : 'New Category'}</h2>
+              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 20, lineHeight: 1, padding: 4 }}>×</button>
+            </div>
+            <div style={{ display: 'flex', background: 'var(--surface-2)', borderRadius: 10, padding: 4, border: '1px solid var(--border)' }}>
+              {(['expense','income'] as const).map(t => (
+                <button key={t} onClick={() => setForm(f=>({...f,type:t}))} style={{
+                  flex: 1, padding: '9px', borderRadius: 7, fontSize: 13, fontWeight: 600,
+                  background: form.type===t ? (t==='income'?'var(--green)':'var(--red)') : 'transparent',
+                  color: form.type===t ? 'white' : 'var(--text-muted)', border: 'none',
+                  textTransform: 'capitalize', transition: 'all 0.15s ease',
+                }}>{t}</button>
               ))}
             </div>
-
             <div>
-              <label className="block text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>Name</label>
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Groceries" />
+              <label style={LABEL_STYLE}>Name</label>
+              <input value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))} placeholder="e.g. Groceries" autoFocus />
             </div>
-
             <div>
-              <label className="block text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Color</label>
-              <div className="flex flex-wrap gap-2">
-                {COLORS.map(c => (
-                  <button key={c} onClick={() => setForm(f => ({ ...f, color: c }))}
-                    className="w-7 h-7 rounded-full transition-transform hover:scale-110"
-                    style={{ background: c, outline: form.color === c ? `3px solid white` : 'none', outlineOffset: '2px' }} />
+              <label style={LABEL_STYLE}>Color</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {COLORS.map(col => (
+                  <button key={col} onClick={() => setForm(f=>({...f,color:col}))} style={{
+                    width: 28, height: 28, borderRadius: '50%', background: col, border: 'none',
+                    outline: form.color===col ? `3px solid white` : '2px solid transparent',
+                    outlineOffset: 2, transform: form.color===col ? 'scale(1.15)' : 'scale(1)',
+                    transition: 'all 0.15s ease', cursor: 'pointer',
+                    boxShadow: form.color===col ? `0 0 12px ${col}60` : 'none',
+                  }} />
                 ))}
               </div>
             </div>
-
-            <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'var(--surface-2)' }}>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-                style={{ background: form.color }}>
+            {/* Preview */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+              <div style={{ width: 34, height: 34, borderRadius: 9, background: `${form.color}22`, border: `1px solid ${form.color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: form.color }}>
                 {form.name ? form.name[0].toUpperCase() : '?'}
               </div>
-              <span className="text-sm font-medium">{form.name || 'Preview'}</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{form.name || 'Preview'}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'capitalize' }}>{form.type} category</div>
+              </div>
             </div>
-
-            <div className="flex gap-3 pt-2">
-              <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-lg text-sm"
-                style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>Cancel</button>
-              <button onClick={handleSave} className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
-                style={{ background: 'var(--accent)' }}>{selectedCategory ? 'Save' : 'Create'}</button>
+            <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
+              <button onClick={() => setShowModal(false)} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Cancel</button>
+              <button onClick={handleSave} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)' }}>{selected ? 'Save Changes' : 'Create'}</button>
             </div>
           </div>
         </div>

@@ -3,13 +3,17 @@ import './globals.css';
 import { AuthProvider } from '@/lib/AuthContext';
 
 export const metadata: Metadata = {
-  title: 'FinTrack — Personal Finance Tracker',
+  title: 'FinTrack — Personal Finance',
   description: 'Track your income, expenses, and budgets with clarity.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
       <body className="antialiased">
         <AuthProvider>{children}</AuthProvider>
       </body>

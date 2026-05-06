@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { query, initDB } from '@/lib/db';
-import { signToken } from '@/lib/auth';
+import { signToken, MIN_PASSWORD_LENGTH } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,6 +10,13 @@ export async function POST(req: NextRequest) {
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
+    }
+
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      return NextResponse.json(
+        { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters long` },
+        { status: 400 }
+      );
     }
 
     const existing = await query('SELECT id FROM users WHERE email = $1', [email]);
