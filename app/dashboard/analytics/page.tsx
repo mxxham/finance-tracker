@@ -1,8 +1,26 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import NumberFlow from '@number-flow/react';
 import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+};
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const BREAKDOWN_COLORS = ['#5b6ef5','#22d47a','#f5a623','#f05252'];
@@ -106,13 +124,13 @@ export default function AnalyticsPage() {
   const savingsRate = stats && stats.income > 0 ? Math.round((stats.savings / stats.income) * 100) : 0;
 
   const STAT_CARDS = stats ? [
-    { label: 'Monthly Spending', value: fmt(stats.expenses), sub: 'Total expenses tracked', color: 'var(--red)' },
-    { label: 'Daily Burn Rate', value: `${fmt(burnRate)}/d`, sub: 'Average daily spend', color: 'var(--amber)' },
-    { label: 'Projected Month-end', value: fmt(projectedExpense), sub: 'Estimated total spend', color: 'var(--purple)' },
-    { label: 'Savings Rate', value: `${savingsRate}%`, sub: 'Of total income saved', color: savingsRate >= 20 ? 'var(--green)' : 'var(--amber)' },
+    { label: 'Monthly Spending', value: stats.expenses, displayValue: fmt(stats.expenses), sub: 'Total expenses tracked', color: 'var(--red)', suffix: '' },
+    { label: 'Daily Burn Rate', value: burnRate, displayValue: fmt(burnRate), sub: 'Average daily spend', color: 'var(--amber)', suffix: '/d' },
+    { label: 'Projected Month-end', value: projectedExpense, displayValue: fmt(projectedExpense), sub: 'Estimated total spend', color: 'var(--purple)', suffix: '' },
+    { label: 'Savings Rate', value: savingsRate, displayValue: String(savingsRate), sub: 'Of total income saved', color: savingsRate >= 20 ? 'var(--green)' : 'var(--amber)', suffix: '%' },
   ] : null;
 
-  const cardStyle = (color: string) => ({ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 22, borderLeft: `3px solid ${color}` });
+  const cardStyle = (color: string) => ({ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 22 });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -133,19 +151,35 @@ export default function AnalyticsPage() {
       </div>
 
       {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+      <motion.div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }} variants={containerVariants} initial="hidden" animate="show">
         {loading ? Array.from({length:4}).map((_,i) => (
           <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 22 }}>
             <Skeleton w={80} h={10} /><div style={{marginTop:12}}><Skeleton w={110} h={22}/></div><div style={{marginTop:8}}><Skeleton w={140} h={9}/></div>
           </div>
-        )) : STAT_CARDS?.map(({ label, value, sub, color }) => (
-          <div key={label} style={cardStyle(color)}>
+        )) : STAT_CARDS?.map(({ label, value, displayValue, sub, color, suffix }) => (
+          <motion.div key={label} style={{ ...cardStyle(color), transition: 'transform 0.1s ease-out', transformStyle: 'preserve-3d' }}
+            variants={itemVariants}
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              const y = e.clientY - rect.top;
+              const centerX = rect.width / 2;
+              const centerY = rect.height / 2;
+              const tiltX = (y - centerY) / centerY * -5;
+              const tiltY = (x - centerX) / centerX * 5;
+              e.currentTarget.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg)';
+            }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>{label}</div>
-            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.04em', color, fontFamily: 'var(--font-mono)', lineHeight: 1.1 }}>{value}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.04em', color, fontFamily: 'var(--font-mono)', lineHeight: 1.1 }}>
+              <NumberFlow value={value} />{suffix}
+            </div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>{sub}</div>
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       {/* Payday Survival */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
@@ -186,7 +220,7 @@ export default function AnalyticsPage() {
             <>
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
-                  <Pie data={spendingBreakdown} dataKey="total" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={4} startAngle={90} endAngle={-270}>
+                  <Pie data={spendingBreakdown} dataKey="total" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={4} startAngle={90} endAngle={-270} isAnimationActive={true} animationDuration={1000}>
                     {spendingBreakdown.map((e,i) => <Cell key={i} fill={e.color} />)}
                   </Pie>
                   <Tooltip formatter={v => fmt(Number(v))} contentStyle={TOOLTIP_STYLE} />
@@ -253,9 +287,9 @@ export default function AnalyticsPage() {
                 <XAxis dataKey="month" stroke="var(--text-muted)" tickLine={false} axisLine={false} fontSize={11} />
                 <YAxis stroke="var(--text-muted)" tickLine={false} axisLine={false} fontSize={11} tickFormatter={v => fmtShort(Number(v))} />
                 <Tooltip formatter={v => fmt(Number(v))} contentStyle={TOOLTIP_STYLE} />
-                <Line type="monotone" dataKey="income" stroke="#22d47a" strokeWidth={2} name="Income" dot={false} />
-                <Line type="monotone" dataKey="expenses" stroke="#f05252" strokeWidth={2} name="Expenses" dot={false} />
-                <Line type="monotone" dataKey="net" stroke="#5b6ef5" strokeWidth={2} strokeDasharray="5 4" name="Net" dot={false} />
+                <Line type="monotone" dataKey="income" stroke="#22d47a" strokeWidth={2} name="Income" dot={false} isAnimationActive={true} animationDuration={1000} />
+                <Line type="monotone" dataKey="expenses" stroke="#f05252" strokeWidth={2} name="Expenses" dot={false} isAnimationActive={true} animationDuration={1000} />
+                <Line type="monotone" dataKey="net" stroke="#5b6ef5" strokeWidth={2} strokeDasharray="5 4" name="Net" dot={false} isAnimationActive={true} animationDuration={1000} />
               </LineChart>
             </ResponsiveContainer>
           )}

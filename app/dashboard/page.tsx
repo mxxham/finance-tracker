@@ -1,9 +1,27 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import NumberFlow from '@number-flow/react';
 import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { showToast } from '@/components/Toast';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+};
 
 interface Stats {
   income: number; expenses: number; savings: number; balance: number;
@@ -38,13 +56,11 @@ const MODAL_STYLE: React.CSSProperties = {
   position: 'fixed', inset: 0, zIndex: 50,
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   padding: 20, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)',
-  animation: 'fadeIn 0.15s ease both',
 };
 const MODAL_BOX: React.CSSProperties = {
   width: '100%', maxWidth: 440, borderRadius: 20,
   background: 'var(--surface)', border: '1px solid var(--border-2)',
   padding: 28, boxShadow: '0 32px 80px rgba(0,0,0,0.7)',
-  animation: 'scaleIn 0.2s cubic-bezier(0.34,1.2,0.64,1) both',
   display: 'flex', flexDirection: 'column', gap: 16,
 };
 
@@ -147,8 +163,12 @@ export default function DashboardPage() {
             padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700,
             background: 'var(--accent)', color: 'white', border: 'none',
             boxShadow: '0 4px 16px rgba(91,110,245,0.3)', letterSpacing: '-0.01em',
-            whiteSpace: 'nowrap',
-          }}>+ Quick Add</button>
+            whiteSpace: 'nowrap', transition: 'transform 0.1s ease',
+          }}
+          onMouseDown={e => (e.currentTarget as HTMLElement).style.transform = 'scale(0.95)'}
+          onMouseUp={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+          onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+          >+ Quick Add</button>
         </div>
       </div>
 
@@ -160,38 +180,53 @@ export default function DashboardPage() {
       )}
 
       {/* Stat Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+      <motion.div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }} variants={containerVariants} initial="hidden" animate="show">
         {loading ? STAT_CONFIG.map(s => (
           <div key={s.key} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20 }}>
             <Skeleton w={64} h={10} /><div style={{ marginTop: 14 }}><Skeleton w={100} h={20} /></div>
             <div style={{ marginTop: 12 }}><Skeleton h={4} /></div>
           </div>
         )) : STAT_CONFIG.map(({ key, label, color, bg, border, icon }) => {
-          const val = stats ? (stats as Record<string, number>)[key] : 0;
+          const val = stats ? (stats as unknown as Record<string, number>)[key] : 0;
           const pct = key === 'income' ? 100 : incomeVal > 0 ? Math.min(100, Math.max(0, (val / incomeVal) * 100)) : 0;
           return (
-            <div key={key} style={{
+            <motion.div key={key} style={{
               background: 'var(--surface)', border: '1px solid var(--border)',
               borderRadius: 14, padding: 20, position: 'relative', overflow: 'hidden',
-              transition: 'border-color 0.2s ease',
+              transition: 'border-color 0.2s ease, transform 0.1s ease-out',
+              transformStyle: 'preserve-3d',
             }}
-            onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-2)'}
-            onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'}>
+            variants={itemVariants}
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              const y = e.clientY - rect.top;
+              const centerX = rect.width / 2;
+              const centerY = rect.height / 2;
+              const tiltX = (y - centerY) / centerY * -5;
+              const tiltY = (x - centerX) / centerX * 5;
+              e.currentTarget.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg)';
+              (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';
+            }}
+            onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-2)'}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.03em', textTransform: 'uppercase' }}>{label}</span>
                 <span style={{ width: 24, height: 24, borderRadius: 6, background: bg, border: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color, fontWeight: 700 }}>{icon}</span>
               </div>
               <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.04em', color, fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
-                {fmt(val ?? 0)}
+                <NumberFlow value={val ?? 0} />
               </div>
               <div style={{ marginTop: 14, height: 3, borderRadius: 99, background: bg }}>
                 <div style={{ height: '100%', borderRadius: 99, background: color, width: `${pct}%`, transition: 'width 0.6s cubic-bezier(0.34,1.1,0.64,1)' }} />
               </div>
               <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>{pct.toFixed(0)}% of income</div>
-            </div>
+            </motion.div>
           );
         })}
-      </div>
+      </motion.div>
 
       {/* Charts Row */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 12 }}>
@@ -227,8 +262,8 @@ export default function DashboardPage() {
                   labelStyle={{ color: 'var(--text)', fontWeight: 600, marginBottom: 4 }}
                   formatter={(v) => fmt(Number(v))}
                 />
-                <Area type="monotone" dataKey="income" stroke="#22d47a" strokeWidth={2} fill="url(#gI)" name="Income" dot={false} />
-                <Area type="monotone" dataKey="expenses" stroke="#f05252" strokeWidth={2} fill="url(#gE)" name="Expenses" dot={false} />
+                <Area type="monotone" dataKey="income" stroke="#22d47a" strokeWidth={2} fill="url(#gI)" name="Income" dot={false} isAnimationActive={true} animationDuration={1000} />
+                <Area type="monotone" dataKey="expenses" stroke="#f05252" strokeWidth={2} fill="url(#gE)" name="Expenses" dot={false} isAnimationActive={true} animationDuration={1000} />
               </AreaChart>
             </ResponsiveContainer>
           )}
@@ -248,7 +283,7 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height={140}>
                 <PieChart>
                   <Pie data={categoryData} dataKey="total" nameKey="name" cx="50%" cy="50%"
-                    innerRadius={38} outerRadius={62} paddingAngle={3} startAngle={90} endAngle={-270}>
+                    innerRadius={38} outerRadius={62} paddingAngle={3} startAngle={90} endAngle={-270} isAnimationActive={true} animationDuration={1000}>
                     {categoryData.map((entry, i) => <Cell key={i} fill={entry.color || '#5b6ef5'} />)}
                   </Pie>
                   <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ background: 'var(--surface-2)', border: '1px solid var(--border-2)', borderRadius: 10, fontSize: 12 }} />
@@ -303,19 +338,21 @@ export default function DashboardPage() {
               + Add Transaction
             </button>
           </div>
-        ) : recentTx.map((tx, idx) => (
-          <div key={tx.id} style={{
-            display: 'flex', alignItems: 'center', gap: 12, padding: '13px 24px',
-            borderBottom: idx < recentTx.length - 1 ? '1px solid var(--border)' : 'none',
-            transition: 'background 0.12s ease',
-          }}
-          onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'}
-          onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-              background: `${tx.category_color}22`,
-              border: `1px solid ${tx.category_color}33`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+        ) : (
+          <motion.div variants={containerVariants} initial="hidden" animate="show">
+            {recentTx.map((tx, idx) => (
+              <motion.div key={tx.id} variants={itemVariants} style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '13px 24px',
+                borderBottom: idx < recentTx.length - 1 ? '1px solid var(--border)' : 'none',
+                transition: 'background 0.12s ease',
+              }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                  background: `${tx.category_color}22`,
+                  border: `1px solid ${tx.category_color}33`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 13, fontWeight: 700, color: tx.category_color || 'var(--accent)',
             }}>
               {translateCategory(tx.category_name)?.[0] || '?'}
@@ -329,14 +366,16 @@ export default function DashboardPage() {
             <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13, color: tx.type === 'income' ? 'var(--green)' : 'var(--red)', whiteSpace: 'nowrap' }}>
               {tx.type === 'income' ? '+' : '−'}{fmt(Number(tx.amount))}
             </span>
-          </div>
-        ))}
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
       </div>
 
       {/* Quick Add Modal */}
       {showQuickAdd && (
-        <div style={MODAL_STYLE} onClick={e => { if (e.target === e.currentTarget) setShowQuickAdd(false); }}>
-          <div style={MODAL_BOX}>
+        <motion.div style={MODAL_STYLE} onClick={e => { if (e.target === e.currentTarget) setShowQuickAdd(false); }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+          <motion.div style={MODAL_BOX} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} transition={{ duration: 0.2, ease: [0.34, 1.2, 0.64, 1] }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.03em' }}>Quick Add</h2>
               <button onClick={() => setShowQuickAdd(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 18, lineHeight: 1, padding: 4 }}>×</button>
@@ -348,8 +387,12 @@ export default function DashboardPage() {
                   flex: 1, padding: '8px', borderRadius: 7, fontSize: 13, fontWeight: 600,
                   background: form.type === t ? (t==='income'?'var(--green)':'var(--red)') : 'transparent',
                   color: form.type === t ? 'white' : 'var(--text-muted)', border: 'none',
-                  transition: 'all 0.15s ease', textTransform: 'capitalize',
-                }}>{t}</button>
+                  transition: 'all 0.15s ease, transform 0.1s ease', textTransform: 'capitalize',
+                }}
+                onMouseDown={e => (e.currentTarget as HTMLElement).style.transform = 'scale(0.95)'}
+                onMouseUp={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+                >{t}</button>
               ))}
             </div>
             <div>
@@ -374,13 +417,21 @@ export default function DashboardPage() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
-              <button onClick={() => setShowQuickAdd(false)} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Cancel</button>
-              <button onClick={handleQuickSave} disabled={saving} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)', opacity: saving ? 0.6 : 1 }}>
+              <button onClick={() => setShowQuickAdd(false)} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)', transition: 'transform 0.1s ease' }}
+                onMouseDown={e => (e.currentTarget as HTMLElement).style.transform = 'scale(0.95)'}
+                onMouseUp={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+              >Cancel</button>
+              <button onClick={handleQuickSave} disabled={saving} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)', opacity: saving ? 0.6 : 1, transition: 'transform 0.1s ease' }}
+                onMouseDown={e => (e.currentTarget as HTMLElement).style.transform = 'scale(0.95)'}
+                onMouseUp={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+              >
                 {saving ? 'Saving…' : 'Save'}
               </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
     </div>
   );

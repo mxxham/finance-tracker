@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/lib/AuthContext';
+import ClientLayout from './ClientLayout';
 
 export const metadata: Metadata = {
   title: 'FinTrack — Personal Finance',
@@ -15,7 +16,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className="antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        <ClientLayout>
+          <AuthProvider>{children}</AuthProvider>
+        </ClientLayout>
       </body>
     </html>
   );

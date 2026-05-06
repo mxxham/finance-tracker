@@ -9,10 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@number-flow/react": "^0.6.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/pg": "^8.20.0",
     "bcryptjs": "^3.0.3",
+    "framer-motion": "^12.38.0",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.14.0",
     "next": "16.2.4",
