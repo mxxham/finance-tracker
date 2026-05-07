@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 
 export type ToastType = 'success' | 'error' | 'info';
-export interface ToastMessage { id: string; message: string; type: ToastType; }
+export interface ToastMessage { id: string; message: string; type: ToastType; exiting?: boolean; }
 
 let listeners: ((t: ToastMessage[]) => void)[] = [];
 let queue: ToastMessage[] = [];
@@ -12,9 +12,15 @@ export function showToast(message: string, type: ToastType = 'success') {
   queue = [...queue, { id, message, type }];
   listeners.forEach(fn => fn(queue));
   setTimeout(() => {
-    queue = queue.filter(t => t.id !== id);
+    // Mark as exiting first
+    queue = queue.map(t => t.id === id ? { ...t, exiting: true } : t);
     listeners.forEach(fn => fn(queue));
-  }, 3800);
+    // Then remove after animation
+    setTimeout(() => {
+      queue = queue.filter(t => t.id !== id);
+      listeners.forEach(fn => fn(queue));
+    }, 250);
+  }, 3600);
 }
 
 const ICONS = { success: '✓', error: '✕', info: 'i' };
@@ -37,19 +43,23 @@ export default function ToastContainer() {
       {toasts.map(t => {
         const s = STYLES[t.type];
         return (
-          <div key={t.id} style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '11px 16px', borderRadius: 12,
-            background: 'var(--surface)', border: `1px solid ${s.border}`,
-            color: 'var(--text)', fontSize: 13, fontWeight: 500,
-            animation: 'slideInRight 0.22s cubic-bezier(0.34,1.56,0.64,1) both',
-            minWidth: 220, maxWidth: 340,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-            backdropFilter: 'blur(12px)',
-          }}>
+          <div
+            key={t.id}
+            className={t.exiting ? 'toast-exit' : 'animate-slideInRight'}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '11px 16px', borderRadius: 12,
+              background: 'var(--surface)', border: `1px solid ${s.border}`,
+              color: 'var(--text)', fontSize: 13, fontWeight: 500,
+              minWidth: 220, maxWidth: 340,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              backdropFilter: 'blur(12px)',
+            }}
+          >
             <span style={{
-              width: 22, height: 22, borderRadius: '50%', display: 'flex',
-              alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700,
+              width: 22, height: 22, borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 700,
               background: s.bg, color: s.accent, flexShrink: 0, border: `1px solid ${s.border}`,
             }}>{ICONS[t.type]}</span>
             {t.message}

@@ -1,26 +1,8 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-import NumberFlow from '@number-flow/react';
 import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2
-    }
-  }
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4 } }
-};
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const BREAKDOWN_COLORS = ['#5b6ef5','#22d47a','#f5a623','#f05252'];
@@ -37,9 +19,8 @@ function fmtShort(n: number) {
 function groupCategory(name: string) {
   const t = translateCategory(name);
   const essentials = ['Rent & Housing','Bills & Utilities','Phone & Internet','Transport & Rideshare','Health','Education'];
-  const savings = ['Savings & Investment'];
   if (essentials.includes(t)) return 'Essentials';
-  if (savings.includes(t)) return 'Savings';
+  if (['Savings & Investment'].includes(t)) return 'Savings';
   if (['Food & Drink','Shopping','Entertainment'].includes(t)) return 'Lifestyle';
   return 'Other';
 }
@@ -68,6 +49,9 @@ export default function AnalyticsPage() {
   const [transactions, setTransactions] = useState<{ id: number; amount: number; type: string; description: string; date: string; category_name: string; category_color: string }[]>([]);
   const [budgets, setBudgets] = useState<{ id: number; amount: string; spent: string; category_name: string; category_color: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [chartKey, setChartKey] = useState(0);
+  const [trendView, setTrendView] = useState<'mom'|'dod'>('mom');
+
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,6 +62,7 @@ export default function AnalyticsPage() {
         api.getBudgets({ month: String(month), year: String(year) }),
       ]);
       setStats(s); setTransactions(tx); setBudgets(b);
+      setChartKey(k => k + 1);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, [month, year]);
@@ -99,15 +84,35 @@ export default function AnalyticsPage() {
 
   const trendData = useMemo(() => {
     if (!stats) return [];
-    const map: Record<string, { month: string; income: number; expenses: number; net: number }> = {};
+
+    // Month-over-month (existing stats endpoint)
+    const momMap: Record<string, { month: string; day: string; income: number; expenses: number; net: number }> = {};
     for (const row of stats.trend) {
       const key = `${row.year}-${String(row.month).padStart(2,'0')}`;
-      if (!map[key]) map[key] = { month: MONTHS[row.month-1], income: 0, expenses: 0, net: 0 };
-      if (row.type === 'income') map[key].income = Number(row.total);
-      else map[key].expenses = Number(row.total);
+      if (!momMap[key]) {
+        momMap[key] = {
+          month: MONTHS[row.month - 1],
+          day: '—',
+          income: 0,
+          expenses: 0,
+          net: 0,
+        };
+      }
+      if (row.type === 'income') momMap[key].income = Number(row.total);
+      else momMap[key].expenses = Number(row.total);
     }
-    return Object.values(map).map(item => ({ ...item, net: item.income - item.expenses }));
+
+    return Object.values(momMap).map(item => ({ ...item, net: item.income - item.expenses }));
   }, [stats]);
+
+  // Day-over-day spending habits (visual placeholder using existing data)
+  // NOTE: Current /api/stats only provides month-level trend. Implementing true
+  // day-over-day requires a backend query that groups by DATE.
+  const dayOverDayData = useMemo(() => {
+    if (trendView !== 'dod') return null;
+    return trendData;
+  }, [trendData, trendView]);
+
 
   const budgetProgress = useMemo(() => budgets.map(b => {
     const amount = Number(b.amount), spent = Number(b.spent);
@@ -124,18 +129,16 @@ export default function AnalyticsPage() {
   const savingsRate = stats && stats.income > 0 ? Math.round((stats.savings / stats.income) * 100) : 0;
 
   const STAT_CARDS = stats ? [
-    { label: 'Monthly Spending', value: stats.expenses, displayValue: fmt(stats.expenses), sub: 'Total expenses tracked', color: 'var(--red)', suffix: '' },
-    { label: 'Daily Burn Rate', value: burnRate, displayValue: fmt(burnRate), sub: 'Average daily spend', color: 'var(--amber)', suffix: '/d' },
-    { label: 'Projected Month-end', value: projectedExpense, displayValue: fmt(projectedExpense), sub: 'Estimated total spend', color: 'var(--purple)', suffix: '' },
-    { label: 'Savings Rate', value: savingsRate, displayValue: String(savingsRate), sub: 'Of total income saved', color: savingsRate >= 20 ? 'var(--green)' : 'var(--amber)', suffix: '%' },
+    { label: 'Monthly Spending',    value: fmt(stats.expenses),    sub: 'Total expenses tracked',     color: 'var(--red)'    },
+    { label: 'Daily Burn Rate',     value: `${fmt(burnRate)}/d`,   sub: 'Average daily spend',        color: 'var(--amber)'  },
+    { label: 'Projected Month-end', value: fmt(projectedExpense),  sub: 'Estimated total spend',      color: 'var(--purple)' },
+    { label: 'Savings Rate',        value: `${savingsRate}%`,      sub: 'Of total income saved',      color: savingsRate >= 20 ? 'var(--green)' : 'var(--amber)' },
   ] : null;
-
-  const cardStyle = (color: string) => ({ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 22 });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+      <div className="animate-fadeUp" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
         <div>
           <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Analytics</h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Smart financial insights & trends</p>
@@ -150,39 +153,33 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <motion.div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }} variants={containerVariants} initial="hidden" animate="show">
-        {loading ? Array.from({length:4}).map((_,i) => (
-          <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 22 }}>
-            <Skeleton w={80} h={10} /><div style={{marginTop:12}}><Skeleton w={110} h={22}/></div><div style={{marginTop:8}}><Skeleton w={140} h={9}/></div>
+      {/* KPI Cards — staggered */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+        {loading ? Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className={`animate-fadeUp stagger-${i + 1}`} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 22 }}>
+            <Skeleton w={80} h={10} />
+            <div style={{ marginTop: 12 }}><Skeleton w={110} h={22} /></div>
+            <div style={{ marginTop: 8 }}><Skeleton w={140} h={9} /></div>
           </div>
-        )) : STAT_CARDS?.map(({ label, value, displayValue, sub, color, suffix }) => (
-          <motion.div key={label} style={{ ...cardStyle(color), transition: 'transform 0.1s ease-out', transformStyle: 'preserve-3d' }}
-            variants={itemVariants}
-            onMouseMove={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const x = e.clientX - rect.left;
-              const y = e.clientY - rect.top;
-              const centerX = rect.width / 2;
-              const centerY = rect.height / 2;
-              const tiltX = (y - centerY) / centerY * -5;
-              const tiltY = (x - centerX) / centerX * 5;
-              e.currentTarget.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg)';
-            }}>
+        )) : STAT_CARDS?.map(({ label, value, sub, color }, i) => (
+          <div key={label} className={`animate-fadeUp stagger-${i + 1}`} style={{
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: 14, padding: 22,
+            transition: 'border-color 0.2s ease, transform 0.18s ease, box-shadow 0.18s ease',
+          }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 32px rgba(0,0,0,0.3)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'none'; (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}
+          >
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>{label}</div>
-            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.04em', color, fontFamily: 'var(--font-mono)', lineHeight: 1.1 }}>
-              <NumberFlow value={value} />{suffix}
-            </div>
+            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.04em', color, fontFamily: 'var(--font-mono)', lineHeight: 1.1 }}>{value}</div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>{sub}</div>
-          </motion.div>
+          </div>
         ))}
-      </motion.div>
+      </div>
+
 
       {/* Payday Survival */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
+      <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 4 }}>Payday Survival Budget</div>
@@ -205,30 +202,34 @@ export default function AnalyticsPage() {
           </div>
         </div>
         {stats && currentCash < 0 && (
-          <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 9, background: 'var(--red-muted)', border: '1px solid rgba(240,82,82,0.25)', fontSize: 12, color: 'var(--red)' }}>
-            ⚠ Expenses exceed income this period. Reduce spending or add income transactions.
+          <div className="animate-slideInUp" style={{ marginTop: 14, padding: '10px 14px', borderRadius: 9, background: 'var(--red-muted)', border: '1px solid rgba(240,82,82,0.25)', fontSize: 12, color: 'var(--red)' }}>
+            Expenses exceed income this period. Reduce spending or add income transactions.
           </div>
         )}
       </div>
 
       {/* Spending Breakdown + Merchant */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 12 }}>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
+        <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
           <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 4 }}>Spending Breakdown</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>Essentials · Lifestyle · Savings · Other</div>
           {loading ? <Skeleton h={220} r={10} /> : (
             <>
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer key={chartKey} width="100%" height={200}>
                 <PieChart>
-                  <Pie data={spendingBreakdown} dataKey="total" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={4} startAngle={90} endAngle={-270} isAnimationActive={true} animationDuration={1000}>
+                  <Pie data={spendingBreakdown} dataKey="total" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={4} startAngle={90} endAngle={-270}
+                    isAnimationActive={true} animationDuration={850} animationEasing="ease-out">
                     {spendingBreakdown.map((e,i) => <Cell key={i} fill={e.color} />)}
                   </Pie>
                   <Tooltip formatter={v => fmt(Number(v))} contentStyle={TOOLTIP_STYLE} />
                 </PieChart>
               </ResponsiveContainer>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginTop: 16 }}>
-                {spendingBreakdown.map(item => (
-                  <div key={item.name} style={{ padding: '12px 14px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {spendingBreakdown.map((item, i) => (
+                  <div key={item.name} className={`animate-fadeUp stagger-${i+1}`} style={{ padding: '12px 14px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4, transition: 'transform 0.15s, border-color 0.15s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-2)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'none'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color }} />
                       <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{item.name}</span>
@@ -242,7 +243,7 @@ export default function AnalyticsPage() {
           )}
         </div>
 
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
+        <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
           <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 4 }}>Top Merchants</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>Where you spend the most</div>
           {loading ? (
@@ -254,13 +255,16 @@ export default function AnalyticsPage() {
               {merchantData.map((m, i) => {
                 const maxVal = merchantData[0].total;
                 return (
-                  <div key={m.name} style={{ padding: '10px 12px', borderRadius: 9, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                  <div key={m.name} className={`animate-slideInLeft stagger-${i+1}`} style={{ padding: '10px 12px', borderRadius: 9, background: 'var(--surface-2)', border: '1px solid var(--border)', transition: 'transform 0.15s, border-color 0.15s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateX(3px)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-2)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'none'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
+                  >
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                       <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>{m.name}</span>
                       <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--red)', fontWeight: 600 }}>{fmt(m.total)}</span>
                     </div>
                     <div style={{ height: 3, borderRadius: 99, background: 'var(--surface-3)' }}>
-                      <div style={{ height: '100%', borderRadius: 99, background: BREAKDOWN_COLORS[i % BREAKDOWN_COLORS.length], width: `${(m.total/maxVal)*100}%` }} />
+                      <div className="bar-animated" style={{ height: '100%', borderRadius: 99, background: BREAKDOWN_COLORS[i % BREAKDOWN_COLORS.length], width: `${(m.total/maxVal)*100}%` }} />
                     </div>
                   </div>
                 );
@@ -275,21 +279,34 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Trends + Budget Tracking */}
+      {/* Trends + Budget */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 12 }}>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 4 }}>Month-over-Month Trends</div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>Income, expenses & net savings over time</div>
+        <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 4, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em' }}>Month-over-Month Trends</div>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text-muted)' }}>View</label>
+              <select
+                value={trendView}
+                onChange={e => setTrendView(e.target.value as 'mom'|'dod')}
+                style={{ width: 190, fontSize: 13, marginLeft: 10 }}
+              >
+                <option value="mom">Month-over-Month</option>
+                <option value="dod">Day-over-Day (this month)</option>
+              </select>
+            </div>
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>Income & expenses with net savings</div>
           {loading ? <Skeleton h={220} r={10} /> : (
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer key={chartKey} width="100%" height={220}>
               <LineChart data={trendData} margin={{ top: 4, right: 4, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                <XAxis dataKey="month" stroke="var(--text-muted)" tickLine={false} axisLine={false} fontSize={11} />
+                <XAxis dataKey={trendView === 'mom' ? 'month' : 'day'} stroke="var(--text-muted)" tickLine={false} axisLine={false} fontSize={11} />
                 <YAxis stroke="var(--text-muted)" tickLine={false} axisLine={false} fontSize={11} tickFormatter={v => fmtShort(Number(v))} />
                 <Tooltip formatter={v => fmt(Number(v))} contentStyle={TOOLTIP_STYLE} />
-                <Line type="monotone" dataKey="income" stroke="#22d47a" strokeWidth={2} name="Income" dot={false} isAnimationActive={true} animationDuration={1000} />
-                <Line type="monotone" dataKey="expenses" stroke="#f05252" strokeWidth={2} name="Expenses" dot={false} isAnimationActive={true} animationDuration={1000} />
-                <Line type="monotone" dataKey="net" stroke="#5b6ef5" strokeWidth={2} strokeDasharray="5 4" name="Net" dot={false} isAnimationActive={true} animationDuration={1000} />
+                <Line type="monotone" dataKey="income"   stroke="#22d47a" strokeWidth={2} name="Income"   dot={false} isAnimationActive animationDuration={900} animationEasing="ease-out" />
+                <Line type="monotone" dataKey="expenses" stroke="#f05252" strokeWidth={2} name="Expenses" dot={false} isAnimationActive animationDuration={900} animationEasing="ease-out" />
+                <Line type="monotone" dataKey="net"      stroke="#5b6ef5" strokeWidth={2} strokeDasharray="5 4" name="Net" dot={false} isAnimationActive animationDuration={900} animationEasing="ease-out" />
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -302,7 +319,7 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
+        <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
           <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 4 }}>Budget Tracking</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>Progress vs limits</div>
           {loading ? (
@@ -311,17 +328,17 @@ export default function AnalyticsPage() {
             </div>
           ) : budgetProgress.length ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {budgetProgress.map(b => {
+              {budgetProgress.map((b, i) => {
                 const over = b.used >= 100;
                 const warn = !over && b.used >= 80;
                 return (
-                  <div key={b.name}>
+                  <div key={b.name} className={`animate-fadeUp stagger-${i+1}`}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                       <span style={{ fontSize: 12, fontWeight: 600 }}>{b.name}</span>
                       <span style={{ fontSize: 11, fontWeight: 700, color: over ? 'var(--red)' : warn ? 'var(--amber)' : 'var(--text-muted)' }}>{Math.round(b.used)}%</span>
                     </div>
                     <div style={{ height: 5, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', borderRadius: 99, width: `${b.used}%`, background: over ? 'var(--red)' : warn ? 'var(--amber)' : b.color, transition: 'width 0.6s ease' }} />
+                      <div className="bar-animated" style={{ height: '100%', borderRadius: 99, width: `${b.used}%`, background: over ? 'var(--red)' : warn ? 'var(--amber)' : b.color }} />
                     </div>
                     <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>{fmt(b.spent)} of {fmt(b.amount)}</div>
                   </div>
@@ -338,20 +355,25 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Monthly Summary */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
+      <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
         <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 18 }}>Monthly Summary</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
-          {loading ? Array.from({length:4}).map((_,i) => <Skeleton key={i} h={72} r={10}/>) : [
-            { label: 'Total Income', value: stats ? fmt(stats.income) : '—', color: 'var(--green)' },
-            { label: 'Total Expenses', value: stats ? fmt(stats.expenses) : '—', color: 'var(--red)' },
-            { label: 'Net Balance', value: stats ? fmt(stats.balance) : '—', color: 'var(--text)' },
-            { label: 'Savings Rate', value: `${savingsRate}%`, color: savingsRate >= 20 ? 'var(--green)' : savingsRate >= 10 ? 'var(--amber)' : 'var(--red)' },
-          ].map(({ label, value, color }) => (
-            <div key={label} style={{ padding: '16px 18px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.03em', textTransform: 'uppercase', marginBottom: 8 }}>{label}</div>
-              <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.04em', fontFamily: 'var(--font-mono)', color }}>{value}</div>
-            </div>
-          ))}
+          {loading ? Array.from({length:4}).map((_,i) => <Skeleton key={i} h={72} r={10}/>) :
+            [
+              { label: 'Total Income',    value: stats ? fmt(stats.income) : '—',   color: 'var(--green)' },
+              { label: 'Total Expenses',  value: stats ? fmt(stats.expenses) : '—', color: 'var(--red)'   },
+              { label: 'Net Balance',     value: stats ? fmt(stats.balance) : '—',  color: 'var(--text)'  },
+              { label: 'Savings Rate',    value: `${savingsRate}%`,                 color: savingsRate >= 20 ? 'var(--green)' : savingsRate >= 10 ? 'var(--amber)' : 'var(--red)' },
+            ].map(({ label, value, color }, i) => (
+              <div key={label} className={`animate-fadeUp stagger-${i+1}`} style={{ padding: '16px 18px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', transition: 'transform 0.15s, border-color 0.15s' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-2)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'none'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.03em', textTransform: 'uppercase', marginBottom: 8 }}>{label}</div>
+                <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.04em', fontFamily: 'var(--font-mono)', color }}>{value}</div>
+              </div>
+            ))
+          }
         </div>
       </div>
     </div>
