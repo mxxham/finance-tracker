@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/Toast';
 import { CURRENCIES, UserSettings } from '@/lib/currencies';
+import { THEMES, applyTheme } from '@/lib/themes';
 
 function SectionTitle({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) {
   return (
@@ -100,6 +101,7 @@ export default function SettingsPage() {
   const [payday, setPayday] = useState(25);
 
   // Appearance
+  const [theme, setTheme] = useState('midnight');
   const [enableAnimations, setEnableAnimations] = useState(true);
   const [dateFormat, setDateFormat] = useState('DD/MM/YYYY');
   const [weekStart, setWeekStart] = useState('monday');
@@ -128,6 +130,7 @@ export default function SettingsPage() {
       setShowDecimals(settings.show_decimals);
       setCompactNumbers(settings.compact_numbers);
       setPayday(settings.payday);
+      setTheme(settings.theme || 'midnight');
       setEnableAnimations(settings.enable_animations);
       setDateFormat(settings.date_format);
       setWeekStart(settings.week_start);
@@ -187,7 +190,7 @@ export default function SettingsPage() {
   const saveAppearance = async () => {
     setSaving(true);
     try {
-      await updateSettings({ enable_animations: enableAnimations, date_format: dateFormat, week_start: weekStart, default_view: defaultView });
+      await updateSettings({ theme, enable_animations: enableAnimations, date_format: dateFormat, week_start: weekStart, default_view: defaultView });
       showToast('Appearance saved');
     } catch { showToast('Failed to save', 'error'); }
     finally { setSaving(false); }
@@ -429,7 +432,96 @@ export default function SettingsPage() {
           {active === 'appearance' && (
             <Card>
               <SectionTitle icon="◐" title="Appearance" subtitle="Customize how the app looks and behaves" />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+                {/* Theme Picker */}
+                <div>
+                  <Label>Color theme</Label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+                    {THEMES.map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => {
+                          setTheme(t.id);
+                          applyTheme(t);
+                        }}
+                        title={t.name}
+                        style={{
+                          position: 'relative',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 8,
+                          padding: '10px 8px 10px',
+                          borderRadius: 12,
+                          border: 'none',
+                          background: theme === t.id ? 'var(--accent-glow)' : 'var(--surface-2)',
+                          outline: theme === t.id ? '2px solid var(--accent)' : '1px solid var(--border)',
+                          transition: 'all 0.18s ease',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={e => { if (theme !== t.id) (e.currentTarget as HTMLElement).style.outlineColor = 'var(--border-2)'; }}
+                        onMouseLeave={e => { if (theme !== t.id) (e.currentTarget as HTMLElement).style.outlineColor = 'var(--border)'; }}
+                      >
+                        {/* Swatch */}
+                        <div style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 10,
+                          background: t.swatchBg,
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          flexShrink: 0,
+                        }}>
+                          {/* Diagonal split showing accent + highlight */}
+                          <div style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            right: 0,
+                            width: '65%',
+                            height: '65%',
+                            background: t.swatchAccent,
+                            borderTopLeftRadius: 8,
+                          }} />
+                          <div style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            right: 0,
+                            width: '35%',
+                            height: '35%',
+                            background: t.swatchHighlight,
+                          }} />
+                          {/* Active checkmark */}
+                          {theme === t.id && (
+                            <div style={{
+                              position: 'absolute',
+                              inset: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              background: 'rgba(0,0,0,0.35)',
+                              fontSize: 14,
+                              color: 'white',
+                            }}>✓</div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: theme === t.id ? 'var(--accent-2)' : 'var(--text-soft)', letterSpacing: '-0.01em', textAlign: 'center', lineHeight: 1.2 }}>
+                          {t.name}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  {/* Description of selected theme */}
+                  <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 9, background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
+                    <div>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent-2)' }}>{THEMES.find(t => t.id === theme)?.name}</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}> — {THEMES.find(t => t.id === theme)?.description}</span>
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <Label>Date format</Label>
                   <select value={dateFormat} onChange={e => setDateFormat(e.target.value)}>

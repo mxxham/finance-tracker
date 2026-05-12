@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { UserSettings, DEFAULT_SETTINGS, makeFmt, makeFmtShort } from '@/lib/currencies';
 import { api } from '@/lib/api';
+import { applyTheme, getThemeById } from '@/lib/themes';
 
 interface SettingsContextType {
   settings: UserSettings;
@@ -23,7 +24,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       const token = typeof window !== 'undefined' ? localStorage.getItem('ft_token') : null;
       if (!token) { setLoading(false); return; }
       const data = await api.getSettings();
-      setSettings({ ...DEFAULT_SETTINGS, ...data });
+      const merged = { ...DEFAULT_SETTINGS, ...data };
+      setSettings(merged);
+      applyTheme(getThemeById(merged.theme));
     } catch {
       // silently fallback to defaults
     } finally {
@@ -32,17 +35,17 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Trigger reload without tripping the eslint rule.
-    setTimeout(() => {
-      void reload();
-    }, 0);
+    setTimeout(() => { void reload(); }, 0);
   }, [reload]);
 
   const updateSettings = async (patch: Partial<UserSettings>) => {
     const next = { ...settings, ...patch };
     setSettings(next); // optimistic
+    if (patch.theme) applyTheme(getThemeById(patch.theme)); // instant preview
     const saved = await api.updateSettings(patch);
-    setSettings({ ...DEFAULT_SETTINGS, ...saved });
+    const merged = { ...DEFAULT_SETTINGS, ...saved };
+    setSettings(merged);
+    applyTheme(getThemeById(merged.theme));
   };
 
   const fmt      = makeFmt(settings);

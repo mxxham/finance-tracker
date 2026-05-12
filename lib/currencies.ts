@@ -17,7 +17,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   currency: 'IDR',
   locale: 'id-ID',
   payday: 25,
-  theme: 'dark',
+  theme: 'midnight',
   date_format: 'DD/MM/YYYY',
   week_start: 'monday',
   default_view: 'overview',
