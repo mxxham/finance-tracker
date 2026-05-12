@@ -64,6 +64,26 @@ export async function initDB() {
     );
   `);
 
+  await query(`
+    CREATE TABLE IF NOT EXISTS user_settings (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+      currency VARCHAR(10) DEFAULT 'IDR',
+      locale VARCHAR(20) DEFAULT 'id-ID',
+      payday INTEGER DEFAULT 25,
+      theme VARCHAR(20) DEFAULT 'dark',
+      date_format VARCHAR(20) DEFAULT 'DD/MM/YYYY',
+      week_start VARCHAR(10) DEFAULT 'monday',
+      default_view VARCHAR(20) DEFAULT 'overview',
+      show_decimals BOOLEAN DEFAULT FALSE,
+      compact_numbers BOOLEAN DEFAULT TRUE,
+      enable_animations BOOLEAN DEFAULT TRUE,
+      budget_alerts BOOLEAN DEFAULT TRUE,
+      budget_alert_threshold INTEGER DEFAULT 80,
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
   console.log('Database initialized');
 }
 

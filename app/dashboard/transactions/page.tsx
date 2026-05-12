@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { showToast } from '@/components/Toast';
+import { useSettings } from '@/lib/SettingsContext';
 
 interface Transaction {
   id: number; amount: number; type: string; description: string;
@@ -13,9 +14,6 @@ interface Category { id: number; name: string; color: string; type: string; }
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const PAGE_SIZE = 20;
 
-function fmt(n: number) {
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
-}
 
 function Skeleton({ w, h, r = 6 }: { w?: number | string; h: number; r?: number }) {
   return <div className="skeleton" style={{ width: w || '100%', height: h, borderRadius: r }} />;
@@ -42,6 +40,7 @@ const MODAL_BOX: React.CSSProperties = {
 };
 
 export default function TransactionsPage() {
+  const { fmt } = useSettings();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());

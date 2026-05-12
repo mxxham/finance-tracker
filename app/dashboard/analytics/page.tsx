@@ -4,20 +4,12 @@ import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, RadarChart, Radar, PolarGrid, PolarAngleAxis, ReferenceLine, Legend } from 'recharts';
+import { useSettings } from '@/lib/SettingsContext';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS_OF_WEEK = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const BREAKDOWN_COLORS = ['#5b6ef5','#22d47a','#f5a623','#f05252'];
 
-function fmt(n: number) {
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
-}
-function fmtShort(n: number) {
-  if (Math.abs(n) >= 1_000_000_000) return `${(n/1_000_000_000).toFixed(1)}B`;
-  if (Math.abs(n) >= 1_000_000) return `${(n/1_000_000).toFixed(1)}M`;
-  if (Math.abs(n) >= 1_000) return `${(n/1_000).toFixed(0)}K`;
-  return String(n);
-}
 function groupCategory(name: string) {
   const t = (translateCategory(name) + ' ' + name).toLowerCase();
   if (/food|drink|beverage|makan|minum|qris|e-wallet|wallet|shop|belanja|entertain|hiburan|dining|resto|cafe|kopi/.test(t)) return 'Lifestyle';
@@ -47,6 +39,7 @@ interface StatsData {
 }
 
 export default function AnalyticsPage() {
+  const { fmt, fmtShort } = useSettings();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());

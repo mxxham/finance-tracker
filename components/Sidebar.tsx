@@ -12,6 +12,7 @@ const nav = [
   { href: '/dashboard/budgets',      label: 'Budgets',      icon: '◎', desc: 'Spending limits' },
   { href: '/dashboard/categories',   label: 'Categories',   icon: '⊞', desc: 'Organize' },
   { href: '/dashboard/scan',         label: 'Scan',         icon: '⊙', desc: 'Import screenshot', highlight: true },
+  { href: '/dashboard/settings',      label: 'Settings',     icon: '⚙', desc: 'Preferences' },
 ];
 
 export default function Sidebar() {

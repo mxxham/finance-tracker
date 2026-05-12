@@ -48,6 +48,15 @@ export const api = {
     return request(`/stats${qs}`);
   },
 
+  getSettings: () => request('/settings'),
+  updateSettings: (body: object) =>
+    request('/settings', { method: 'PUT', body: JSON.stringify(body) }),
+
+  updateProfile: (body: object) =>
+    request('/auth/profile', { method: 'PUT', body: JSON.stringify(body) }),
+  changePassword: (body: object) =>
+    request('/auth/password', { method: 'PUT', body: JSON.stringify(body) }),
+
   getBudgets: (params?: Record<string, string>) => {
     const qs = params ? '?' + new URLSearchParams(params).toString() : '';
     return request(`/budgets${qs}`);

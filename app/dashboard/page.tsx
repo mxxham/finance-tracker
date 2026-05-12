@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { showToast } from '@/components/Toast';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { useSettings } from '@/lib/SettingsContext';
 
 interface Stats {
   income: number; expenses: number; savings: number; balance: number;
@@ -13,15 +14,6 @@ interface Stats {
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-function fmt(n: number) {
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
-}
-function fmtShort(n: number) {
-  if (Math.abs(n) >= 1_000_000_000) return `${(n/1_000_000_000).toFixed(1)}B`;
-  if (Math.abs(n) >= 1_000_000) return `${(n/1_000_000).toFixed(1)}M`;
-  if (Math.abs(n) >= 1_000) return `${(n/1_000).toFixed(0)}K`;
-  return String(n);
-}
 
 const STAT_CONFIG = [
   { key: 'income',   label: 'Income',     color: '#22d47a', bg: 'rgba(34,212,122,0.08)',  border: 'rgba(34,212,122,0.15)', icon: '↑' },
@@ -92,7 +84,7 @@ function useTiltCard() {
   return { ref, handleMouseMove, handleMouseLeave };
 }
 
-function TiltStatCard({ cfg, val, incomeVal, staggerIdx }: { cfg: typeof STAT_CONFIG[0]; val: number; incomeVal: number; staggerIdx: number }) {
+function TiltStatCard({ cfg, val, incomeVal, staggerIdx, fmt }: { cfg: typeof STAT_CONFIG[0]; val: number; incomeVal: number; staggerIdx: number; fmt: (n: number) => string }) {
   const { ref, handleMouseMove, handleMouseLeave } = useTiltCard();
   const pct = cfg.key === 'income' ? 100 : incomeVal > 0 ? Math.min(100, Math.max(0, (val / incomeVal) * 100)) : 0;
 
@@ -139,6 +131,7 @@ const MODAL_BOX: React.CSSProperties = {
 };
 
 export default function DashboardPage() {
+  const { fmt, fmtShort } = useSettings();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear]   = useState(now.getFullYear());
@@ -285,6 +278,7 @@ export default function DashboardPage() {
             val={stats ? (stats as unknown as Record<string, number>)[cfg.key] : 0}
             incomeVal={incomeVal}
             staggerIdx={i}
+            fmt={fmt}
           />
         ))}
       </div>
