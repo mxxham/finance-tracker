@@ -398,25 +398,42 @@ export default function SettingsPage() {
               <div style={{ marginBottom: 24 }}>
                 <Label>Day of month you get paid</Label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, marginBottom: 8 }}>
-                  {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
-                    <button
-                      key={d}
-                      onClick={() => setPayday(d)}
-                      style={{
-                        padding: '10px 0', borderRadius: 9, border: 'none', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-mono)',
-                        background: payday === d ? 'var(--accent)' : 'var(--surface-2)',
-                        color: payday === d ? 'white' : 'var(--text-muted)',
-                        boxShadow: payday === d ? '0 4px 16px rgba(91,110,245,0.3)' : 'none',
-                        transition: 'all 0.15s ease',
-                      }}
-                      onMouseEnter={e => { if (payday !== d) (e.currentTarget as HTMLElement).style.background = 'var(--surface-3)'; }}
-                      onMouseLeave={e => { if (payday !== d) (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'; }}
-                    >
-                      {d}
-                    </button>
-                  ))}
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map(d => {
+                    const isLate = d > 28;
+                    return (
+                      <button
+                        key={d}
+                        onClick={() => setPayday(d)}
+                        title={isLate ? `In shorter months, this will use the last day of that month` : undefined}
+                        style={{
+                          padding: '10px 0', borderRadius: 9, border: 'none', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-mono)',
+                          background: payday === d ? 'var(--accent)' : isLate ? 'var(--surface-3)' : 'var(--surface-2)',
+                          color: payday === d ? 'white' : isLate ? 'var(--text-soft)' : 'var(--text-muted)',
+                          boxShadow: payday === d ? '0 4px 16px rgba(91,110,245,0.3)' : 'none',
+                          outline: isLate && payday !== d ? '1px dashed var(--border-2)' : 'none',
+                          transition: 'all 0.15s ease',
+                          position: 'relative',
+                        }}
+                        onMouseEnter={e => { if (payday !== d) (e.currentTarget as HTMLElement).style.background = 'var(--surface-3)'; }}
+                        onMouseLeave={e => { if (payday !== d) (e.currentTarget as HTMLElement).style.background = isLate ? 'var(--surface-3)' : 'var(--surface-2)'; }}
+                      >
+                        {d}
+                      </button>
+                    );
+                  })}
                 </div>
-                <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
+                {payday > 28 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, background: 'var(--amber-muted)', border: '1px solid rgba(245,166,35,0.25)', marginBottom: 8 }}>
+                    <span style={{ fontSize: 13 }}>⚠</span>
+                    <span style={{ fontSize: 11, color: 'var(--amber)' }}>
+                      In months with fewer days, payday will automatically use the last day of that month (e.g. Feb 28/29, Apr 30).
+                    </span>
+                  </div>
+                )}
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 12, paddingLeft: 2 }}>
+                  Days 29–31 are dashed — they clamp to the last day of shorter months.
+                </div>
+                <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
                   <span style={{ fontSize: 18 }}>◈</span>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>Payday set to the <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{payday}{['st','nd','rd'][((payday-1)%10 < 3 && Math.floor((payday-1)/10) !== 1) ? (payday-1)%10 : 3] || 'th'}</span> of each month</div>
@@ -444,6 +461,7 @@ export default function SettingsPage() {
                         onClick={() => {
                           setTheme(t.id);
                           applyTheme(t);
+                          updateSettings({ theme: t.id });
                         }}
                         title={t.name}
                         style={{

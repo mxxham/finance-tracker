@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     if (result.rows.length === 0) {
       // Return defaults
       return NextResponse.json({
-        currency: 'IDR', locale: 'id-ID', payday: 25, theme: 'dark',
+        currency: 'IDR', locale: 'id-ID', payday: 25, theme: 'midnight',
         date_format: 'DD/MM/YYYY', week_start: 'monday', default_view: 'overview',
         show_decimals: false, compact_numbers: true, enable_animations: true,
         budget_alerts: true, budget_alert_threshold: 80,

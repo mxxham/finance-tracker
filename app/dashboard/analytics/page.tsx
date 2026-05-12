@@ -39,7 +39,7 @@ interface StatsData {
 }
 
 export default function AnalyticsPage() {
-  const { fmt, fmtShort } = useSettings();
+  const { fmt, fmtShort, settings } = useSettings();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -312,7 +312,17 @@ export default function AnalyticsPage() {
   const burnRate = stats ? stats.expenses / dayOfMonth : 0;
   const projectedExpense = burnRate * new Date(year, month, 0).getDate();
   const currentCash = stats ? stats.income - stats.expenses : 0;
-  const nextPayday = (() => { const d = new Date(); const p = new Date(d.getFullYear(), d.getMonth(), 25); return d.getDate() <= 25 ? p : new Date(d.getFullYear(), d.getMonth()+1, 25); })();
+  const paydayDate = settings.payday;
+  const nextPayday = (() => {
+    const d = new Date();
+    const daysInThisMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    const effectivePayday = Math.min(paydayDate, daysInThisMonth);
+    const p = new Date(d.getFullYear(), d.getMonth(), effectivePayday);
+    if (d.getDate() <= effectivePayday) return p;
+    const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    const daysInNextMonth = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate();
+    return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), Math.min(paydayDate, daysInNextMonth));
+  })();
   const daysUntilPayday = Math.max(1, Math.ceil((nextPayday.getTime() - now.getTime()) / 86400000));
   const dailySafeSpend = currentCash / daysUntilPayday;
   const savingsRate = stats && stats.income > 0 ? Math.round((stats.savings / stats.income) * 100) : 0;
