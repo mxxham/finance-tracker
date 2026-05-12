@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const limit = searchParams.get('limit') || '50';
 
     let sql = `
-      SELECT t.*, c.name as category_name, c.color as category_color, c.icon as category_icon
+      SELECT t.*, TO_CHAR(t.date, 'YYYY-MM-DD') as date_str, c.name as category_name, c.color as category_color, c.icon as category_icon
       FROM transactions t
       LEFT JOIN categories c ON t.category_id = c.id
       WHERE t.user_id = $1

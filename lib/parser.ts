@@ -62,8 +62,17 @@ const MONTHS_ID: Record<string, string> = {
   oct: '10', nov: '11', des: '12', dec: '12',
 };
 
+// Returns today's date as YYYY-MM-DD in the user's local timezone (not UTC)
+function localToday(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function parseDate(text: string): string {
-  const today = new Date().toISOString().split('T')[0];
+  const today = localToday();
 
   // DD Mon YYYY or DD Mon YY  (e.g. "05 Mei 2026", "5 Jan 26")
   const m1 = text.match(/(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{2,4})/);
@@ -296,7 +305,7 @@ export function parseOCRText(rawText: string): {
   notes: string;
 } {
   const source_app = detectSourceApp(rawText);
-  const today = new Date().toISOString().split('T')[0];
+  const today = localToday();
 
   // Clean up OCR noise: remove pure-digit reference lines before general parsing
   const lines = rawText

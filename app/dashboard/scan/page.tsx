@@ -68,7 +68,8 @@ export default function ScanPage() {
       setOcrText(raw);
       setStatus('parsing'); setProgress(90); setProgressLabel('Identifying transactions…');
       await new Promise(r => setTimeout(r, 300));
-      const today = new Date().toISOString().split('T')[0];
+      const d = new Date();
+      const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       const parsed = parseOCRText(raw);
       const olderTxs = parsed.transactions.filter(tx => tx.date !== today);
       setSourceApp(parsed.source_app);
@@ -91,7 +92,7 @@ export default function ScanPage() {
           const m2 = normalizeMerchantKey(e.description);
           const merchantMatch = m1 === m2 || m1.includes(m2) || m2.includes(m1);
           const amountMatch = Math.abs(tx.amount - e.amount) <= Math.max(tx.amount * 0.02, 1000);
-          const existingDate = typeof e.date === 'string' ? e.date.split('T')[0] : '';
+          const existingDate = (e as { date_str?: string; date?: string }).date_str || (typeof e.date === 'string' ? e.date.slice(0, 10) : '');
           const dateMatch = tx.date === existingDate;
           return merchantMatch && amountMatch && tx.type === e.type && dateMatch;
         });
