@@ -3,6 +3,7 @@ import './globals.css';
 import { AuthProvider } from '@/lib/AuthContext';
 import { SettingsProvider } from '@/lib/SettingsContext';
 import ClientLayout from './ClientLayout';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
   title: 'FinTrack — Personal Finance',
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ClientLayout>
           <AuthProvider><SettingsProvider>{children}</SettingsProvider></AuthProvider>
         </ClientLayout>
+        <SpeedInsights />
       </body>
     </html>
   );
