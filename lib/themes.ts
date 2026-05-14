@@ -250,6 +250,30 @@ export const THEMES: Theme[] = [
       '--purple': '#4ade80',
     },
   },
+  {
+    id: 'white',
+    name: 'White',
+    description: 'Clean light mode with indigo accents',
+    swatchBg: '#ffffff',
+    swatchAccent: '#5b6ef5',
+    swatchHighlight: '#a78bfa',
+    vars: {
+      '--bg': '#f0f2f8',
+      '--surface': '#ffffff',
+      '--surface-2': '#f5f6fc',
+      '--surface-3': '#eceef8',
+      '--border': '#e0e3f0',
+      '--border-2': '#cdd2e8',
+      '--text': '#111827',
+      '--text-muted': '#8892b0',
+      '--text-soft': '#5a6480',
+      '--accent': '#5b6ef5',
+      '--accent-2': '#4255e8',
+      '--accent-glow': 'rgba(91,110,245,0.10)',
+      '--accent-glow-2': 'rgba(91,110,245,0.18)',
+      '--purple': '#7c3aed',
+    },
+  },
 ];
 
 export function applyTheme(theme: Theme) {

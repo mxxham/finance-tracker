@@ -99,3 +99,65 @@ export function makeFmtShort(settings: Pick<UserSettings, 'currency' | 'locale'>
     return String(Math.round(n));
   };
 }
+
+// ── Exchange rates (approximate, USD-based) ───────────────────────────────────
+// These are approximate rates for currency conversion UX only.
+// 1 USD = X <currency>
+export const USD_RATES: Record<string, number> = {
+  USD: 1,
+  EUR: 0.92,
+  GBP: 0.79,
+  JPY: 154.5,
+  CNY: 7.24,
+  KRW: 1340,
+  SGD: 1.35,
+  MYR: 4.72,
+  THB: 36.2,
+  PHP: 56.8,
+  VND: 25400,
+  INR: 83.5,
+  PKR: 278,
+  BDT: 110,
+  IDR: 16200,
+  AUD: 1.54,
+  NZD: 1.67,
+  CAD: 1.37,
+  CHF: 0.90,
+  HKD: 7.82,
+  TWD: 32.1,
+  SAR: 3.75,
+  AED: 3.67,
+  TRY: 32.5,
+  BRL: 5.10,
+  MXN: 17.2,
+  ZAR: 18.6,
+  NGN: 1580,
+  EGP: 30.9,
+  SEK: 10.7,
+  NOK: 10.6,
+  DKK: 6.90,
+  PLN: 4.01,
+  CZK: 23.2,
+  HUF: 360,
+  RUB: 92.5,
+  UAH: 38.5,
+  ILS: 3.72,
+  QAR: 3.64,
+  KWD: 0.308,
+};
+
+/**
+ * Convert an amount from one currency to another using approximate USD-based rates.
+ * Returns the converted amount rounded to a reasonable precision.
+ */
+export function convertCurrency(amount: number, fromCurrency: string, toCurrency: string): number {
+  if (fromCurrency === toCurrency) return amount;
+  const fromRate = USD_RATES[fromCurrency] ?? 1;
+  const toRate   = USD_RATES[toCurrency]   ?? 1;
+  // Convert to USD first, then to target
+  const inUSD = amount / fromRate;
+  const converted = inUSD * toRate;
+  // Round sensibly: zero-decimal currencies to nearest integer, others to 2dp
+  if (ZERO_DECIMAL.has(toCurrency)) return Math.round(converted);
+  return Math.round(converted * 100) / 100;
+}

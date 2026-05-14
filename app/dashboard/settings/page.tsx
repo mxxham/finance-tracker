@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/Toast';
 import { CURRENCIES, UserSettings } from '@/lib/currencies';
+import { USD_RATES } from '@/lib/currencies';
 import { THEMES, applyTheme } from '@/lib/themes';
 
 function SectionTitle({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
@@ -110,6 +111,7 @@ export default function SettingsPage() {
   const [showDecimals, setShowDecimals] = useState(false);
   const [compactNumbers, setCompactNumbers] = useState(true);
   const [currencySearch, setCurrencySearch] = useState('');
+  const [convertAmounts, setConvertAmounts] = useState(true);
 
   // Payday
   const [payday, setPayday] = useState(25);
@@ -186,8 +188,17 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       const chosen = CURRENCIES.find(c => c.code === currency);
+      const prevCurrency = settings.currency;
+
+      // If currency changed and user wants amounts converted, convert all data
+      if (convertAmounts && currency !== prevCurrency) {
+        await api.convertCurrency(prevCurrency, currency);
+      }
+
       await updateSettings({ currency, locale: chosen?.locale || 'id-ID', show_decimals: showDecimals, compact_numbers: compactNumbers });
-      showToast('Currency settings saved');
+      showToast(convertAmounts && currency !== prevCurrency
+        ? `Currency changed & amounts converted to ${currency}`
+        : 'Currency settings saved');
     } catch { showToast('Failed to save', 'error'); }
     finally { setSaving(false); }
   };
@@ -398,8 +409,39 @@ export default function SettingsPage() {
                     label="Compact large numbers"
                     description="Show 1.2M instead of 1,200,000 in charts"
                   />
+                  {currency !== settings.currency && (
+                    <Toggle
+                      checked={convertAmounts}
+                      onChange={setConvertAmounts}
+                      label="Convert existing amounts"
+                      description={`Automatically convert all your transactions & budgets from ${settings.currency} to ${currency} using approximate exchange rates`}
+                    />
+                  )}
                 </div>
               </div>
+
+              {/* Conversion preview */}
+              {currency !== settings.currency && convertAmounts && (() => {
+                const fromRate = USD_RATES[settings.currency] ?? 1;
+                const toRate = USD_RATES[currency] ?? 1;
+                const rate = toRate / fromRate;
+                const exampleFrom = settings.currency === 'IDR' || settings.currency === 'VND' ? 100000 : settings.currency === 'JPY' || settings.currency === 'KRW' ? 10000 : 100;
+                const exampleTo = Math.round(exampleFrom * rate * 100) / 100;
+                const fromSym = CURRENCIES.find(c => c.code === settings.currency)?.symbol || settings.currency;
+                const toSym = CURRENCIES.find(c => c.code === currency)?.symbol || currency;
+                return (
+                  <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(91,110,245,0.06)', border: '1px solid rgba(91,110,245,0.2)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 16 }}>↔</span>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                      <span style={{ fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>{fromSym}{exampleFrom.toLocaleString()}</span>
+                      {' '}{settings.currency} → {' '}
+                      <span style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{toSym}{exampleTo.toLocaleString()}</span>
+                      {' '}{currency}
+                      <span style={{ marginLeft: 8, opacity: 0.6 }}>· approx. rate 1 {settings.currency} = {rate.toFixed(4)} {currency}</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <SaveRow onSave={saveCurrency} saving={saving} />
             </Card>

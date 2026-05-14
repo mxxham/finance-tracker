@@ -65,6 +65,9 @@ export const api = {
     request(`/budgets/${id}`, { method: 'DELETE' }),
   createBudget: (body: object) =>
     request('/budgets', { method: 'POST', body: JSON.stringify(body) }),
+
+  convertCurrency: (fromCurrency: string, toCurrency: string) =>
+    request('/convert-currency', { method: 'POST', body: JSON.stringify({ fromCurrency, toCurrency }) }),
 };
 
 export const scanScreenshot = async (imageBase64: string, mimeType: string) => {

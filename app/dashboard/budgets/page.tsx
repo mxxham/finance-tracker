@@ -270,7 +270,8 @@ function MonthlyBarChart({ trendData }: { trendData: TrendRow[] }) {
 // ── Main Page ───────────────────────────────────────────────────
 
 export default function BudgetsPage() {
-  const { fmt } = useSettings();
+  const { fmt, settings } = useSettings();
+  const payday = settings.payday || 25;
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -290,19 +291,39 @@ export default function BudgetsPage() {
   const monthProgress = (dayOfMonth / daysInMonth) * 100;
   const isCurrentMonth = month === now.getMonth() + 1 && year === now.getFullYear();
 
-  // ── Core computed values (must be declared before fetchAISuggestions) ──
+  // ── Payday-cycle aware calculations ──
+  // The "cycle" runs from payday of this month to the day before payday next month.
+  // e.g. payday=25: cycle is 25th → 24th of next month.
+  const cycleStart = isCurrentMonth
+    ? new Date(year, month - 1, Math.min(payday, daysInMonth))
+    : new Date(year, month - 1, 1);
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear  = month === 12 ? year + 1 : year;
+  const daysInNextMonth = new Date(nextYear, nextMonth, 0).getDate();
+  const cycleEnd = isCurrentMonth
+    ? new Date(nextYear, nextMonth - 1, Math.min(payday, daysInNextMonth) - 1)
+    : new Date(year, month - 1, daysInMonth);
+
+  const cycleLengthDays = Math.max(1, Math.round((cycleEnd.getTime() - cycleStart.getTime()) / 86400000) + 1);
+  const daysElapsedInCycle = isCurrentMonth
+    ? Math.max(0, Math.min(cycleLengthDays, Math.round((now.getTime() - cycleStart.getTime()) / 86400000)))
+    : cycleLengthDays;
+  const daysLeft = Math.max(0, cycleLengthDays - daysElapsedInCycle);
+  const nextPayday = isCurrentMonth
+    ? new Date(nextYear, nextMonth - 1, Math.min(payday, daysInNextMonth))
+    : null;
   const totalBudget = budgets.reduce((s, b) => s + Number(b.amount), 0);
   const totalSpent = budgets.reduce((s, b) => s + Number(b.spent), 0);
   const totalRemaining = totalBudget - totalSpent;
   const overallPct = totalBudget > 0 ? Math.min(100, (totalSpent / totalBudget) * 100) : 0;
-  const daysLeft = daysInMonth - dayOfMonth;
+  // daysLeft is from the payday-cycle calculation above
   const safeDailySpend = totalRemaining > 0 && daysLeft > 0 ? totalRemaining / daysLeft : 0;
-  const forecastSpend = isCurrentMonth && dayOfMonth > 0 ? (totalSpent / dayOfMonth) * daysInMonth : totalSpent;
+  const forecastSpend = isCurrentMonth && daysElapsedInCycle > 0 ? (totalSpent / daysElapsedInCycle) * cycleLengthDays : totalSpent;
   const forecastOver = forecastSpend > totalBudget;
 
   const overBudgetList = budgets.filter(b => Number(b.spent) > Number(b.amount));
   const nearLimitList = budgets.filter(b => { const p = (Number(b.spent) / Number(b.amount)) * 100; return p >= 80 && p < 100; });
-  const underUsedList = budgets.filter(b => (Number(b.spent) / Number(b.amount)) * 100 < 30 && isCurrentMonth && dayOfMonth > 15);
+  const underUsedList = budgets.filter(b => (Number(b.spent) / Number(b.amount)) * 100 < 30 && isCurrentMonth && daysElapsedInCycle > Math.floor(cycleLengthDays / 2));
   const healthScore = Math.max(0, 100 - overBudgetList.length * 20 - nearLimitList.length * 8 - (forecastOver ? 15 : 0));
 
   const getTrend = (b: Budget) => {
@@ -383,12 +404,12 @@ export default function BudgetsPage() {
     });
 
     // 3. Forecast over budget
-    if (isCurrentMonth && forecastOver && dayOfMonth > 3) {
+    if (isCurrentMonth && forecastOver && daysElapsedInCycle > 3) {
       const overBy = forecastSpend - totalBudget;
       tips.push({
         icon: 'down',
         title: 'On track to exceed your total budget',
-        body: `At your current daily rate of ${fmt(Math.round(totalSpent / dayOfMonth))}/day, you'll overspend by ${fmt(Math.round(overBy))} by month end. Try to spend no more than ${fmt(Math.round(safeDailySpend > 0 ? safeDailySpend : 0))}/day.`,
+        body: `At your current daily rate of ${fmt(Math.round(totalSpent / Math.max(1, daysElapsedInCycle)))}/day, you'll overspend by ${fmt(Math.round(overBy))} by payday. Try to spend no more than ${fmt(Math.round(safeDailySpend > 0 ? safeDailySpend : 0))}/day.`,
         color: 'var(--red)',
       });
     }
@@ -461,7 +482,12 @@ export default function BudgetsPage() {
           <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Budgets</h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
             {MONTH_FULL[month - 1]} {year} · Day {dayOfMonth} of {daysInMonth}
-            {isCurrentMonth && daysLeft > 0 && ` · ${daysLeft} days left`}
+            {isCurrentMonth && daysLeft > 0 && ` · ${daysLeft} days until payday`}
+            {isCurrentMonth && nextPayday && (
+              <span style={{ marginLeft: 6, color: 'var(--accent)', fontWeight: 600 }}>
+                (next payday: {nextPayday.getDate()}/{nextPayday.getMonth() + 1})
+              </span>
+            )}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -535,7 +561,7 @@ export default function BudgetsPage() {
             { label: 'Total Budget', value: fmt(totalBudget), sub: `${budgets.length} categories`, color: 'var(--accent)' },
             { label: 'Total Spent', value: fmt(totalSpent), sub: `${overallPct.toFixed(0)}% of budget`, color: totalSpent > totalBudget ? 'var(--red)' : 'var(--green)' },
             { label: 'Remaining', value: fmt(Math.abs(totalRemaining)), sub: totalRemaining >= 0 ? 'left to spend' : 'over budget', color: totalRemaining >= 0 ? 'var(--text)' : 'var(--red)' },
-            { label: 'Safe Daily', value: safeDailySpend > 0 ? fmt(Math.round(safeDailySpend)) : '—', sub: daysLeft > 0 ? `per day · ${daysLeft}d left` : 'month ended', color: safeDailySpend > 0 ? 'var(--green)' : 'var(--text-muted)' },
+            { label: 'Safe Daily', value: safeDailySpend > 0 ? fmt(Math.round(safeDailySpend)) : '—', sub: daysLeft > 0 ? `per day · ${daysLeft}d to payday` : 'cycle ended', color: safeDailySpend > 0 ? 'var(--green)' : 'var(--text-muted)' },
             { label: 'Forecast', value: fmt(Math.round(forecastSpend)), sub: forecastOver ? 'over budget' : 'projected spend', color: forecastOver ? 'var(--red)' : 'var(--amber)' },
           ].map((item, i) => (
             <div key={i} style={{ ...card, padding: '14px 16px', position: 'relative', overflow: 'hidden' }}>
@@ -765,10 +791,10 @@ export default function BudgetsPage() {
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: safeDailySpend > 0 && budgets.length > 0 ? 12 : 0, lineHeight: 1.6 }}>
                 {safeDailySpend > 0
-                  ? `Spend up to ${fmt(Math.round(safeDailySpend))} per day for the remaining ${daysLeft} day${daysLeft !== 1 ? 's' : ''} to stay on track.`
+                  ? `Spend up to ${fmt(Math.round(safeDailySpend))} per day for the remaining ${daysLeft} day${daysLeft !== 1 ? 's' : ''} until payday to stay on track.`
                   : totalRemaining < 0
                     ? `You're ${fmt(Math.abs(totalRemaining))} over your total budget.`
-                    : 'Month has ended or no days remaining.'}
+                    : 'Pay cycle has ended or no days remaining.'}
               </div>
               {safeDailySpend > 0 && budgets.filter(b => Number(b.spent) < Number(b.amount)).length > 0 && (
                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
@@ -1130,7 +1156,7 @@ export default function BudgetsPage() {
                 {daysLeft}d left
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 10 }}>
-                {daysLeft > 0 ? `${daysLeft} days remaining. Safe daily: ${fmt(Math.round(safeDailySpend))}.` : 'Month has ended.'}
+                {daysLeft > 0 ? `${daysLeft} days until payday. Safe daily: ${fmt(Math.round(safeDailySpend))}.` : 'Pay cycle has ended.'}
               </div>
               <div style={{ height: 6, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden' }}>
                 <div style={{ height: '100%', borderRadius: 99, width: `${monthProgress}%`, background: 'var(--accent)', opacity: 0.6 }} />
