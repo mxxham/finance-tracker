@@ -1,4 +1,5 @@
 'use client';
+import React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '@/lib/SettingsContext';
 import { useAuth } from '@/lib/AuthContext';
@@ -7,7 +8,7 @@ import { showToast } from '@/components/Toast';
 import { CURRENCIES, UserSettings } from '@/lib/currencies';
 import { THEMES, applyTheme } from '@/lib/themes';
 
-function SectionTitle({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) {
+function SectionTitle({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
       <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent-glow)', border: '1px solid rgba(91,110,245,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>{icon}</div>
@@ -68,16 +69,29 @@ function SaveRow({ onSave, saving, label = 'Save changes' }: { onSave: () => voi
   );
 }
 
+// Lucide SVG icons for settings sections
+const SECTION_ICONS: Record<string, React.ReactNode> = {
+  profile:       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+  currency:      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 000 4h4a2 2 0 010 4H8"/><path d="M12 6v2m0 8v2"/></svg>,
+  payday:        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+  appearance:    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>,
+  display:       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>,
+  notifications: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,
+  password:      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>,
+  data:          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
+  danger:        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+};
+
 const SECTIONS = [
-  { id: 'profile',      label: 'Profile',      icon: '◉' },
-  { id: 'currency',     label: 'Currency',     icon: '◎' },
-  { id: 'payday',       label: 'Payday',       icon: '◈' },
-  { id: 'appearance',   label: 'Appearance',   icon: '◐' },
-  { id: 'display',      label: 'Display',      icon: '⊞' },
-  { id: 'notifications',label: 'Alerts',       icon: '◎' },
-  { id: 'password',     label: 'Password',     icon: '⊙' },
-  { id: 'data',         label: 'Data',         icon: '⇅' },
-  { id: 'danger',       label: 'Danger Zone',  icon: '⚠' },
+  { id: 'profile',       label: 'Profile',      iconKey: 'profile' },
+  { id: 'currency',      label: 'Currency',     iconKey: 'currency' },
+  { id: 'payday',        label: 'Payday',       iconKey: 'payday' },
+  { id: 'appearance',    label: 'Appearance',   iconKey: 'appearance' },
+  { id: 'display',       label: 'Display',      iconKey: 'display' },
+  { id: 'notifications', label: 'Alerts',       iconKey: 'notifications' },
+  { id: 'password',      label: 'Password',     iconKey: 'password' },
+  { id: 'data',          label: 'Data',         iconKey: 'data' },
+  { id: 'danger',        label: 'Danger Zone',  iconKey: 'danger' },
 ];
 
 export default function SettingsPage() {
@@ -279,7 +293,7 @@ export default function SettingsPage() {
                 onMouseEnter={e => { if (active !== s.id) (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'; }}
                 onMouseLeave={e => { if (active !== s.id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
               >
-                <span style={{ fontSize: 13, opacity: 0.8 }}>{s.icon}</span>
+                <span style={{ fontSize: 13, opacity: 0.8, display:'flex', alignItems:'center' }}>{SECTION_ICONS[s.iconKey]}</span>
                 {s.label}
               </button>
             ))}
@@ -292,7 +306,7 @@ export default function SettingsPage() {
           {/* ── PROFILE ── */}
           {active === 'profile' && (
             <Card>
-              <SectionTitle icon="◉" title="Profile" subtitle="Update your personal information" />
+              <SectionTitle icon={SECTION_ICONS.profile} title="Profile" subtitle="Update your personal information" />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
                   <Label>Full name</Label>
@@ -320,7 +334,7 @@ export default function SettingsPage() {
           {/* ── CURRENCY ── */}
           {active === 'currency' && (
             <Card>
-              <SectionTitle icon="◎" title="Currency & Formatting" subtitle="Choose your currency and how numbers are displayed" />
+              <SectionTitle icon={SECTION_ICONS.currency} title="Currency & Formatting" subtitle="Choose your currency and how numbers are displayed" />
 
               {/* Current selection preview */}
               {selectedCurrency && (
@@ -394,7 +408,7 @@ export default function SettingsPage() {
           {/* ── PAYDAY ── */}
           {active === 'payday' && (
             <Card>
-              <SectionTitle icon="◈" title="Payday & Budget Cycle" subtitle="Set when you get paid — used for the payday survival budget" />
+              <SectionTitle icon={SECTION_ICONS.payday} title="Payday & Budget Cycle" subtitle="Set when you get paid — used for the payday survival budget" />
               <div style={{ marginBottom: 24 }}>
                 <Label>Day of month you get paid</Label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, marginBottom: 8 }}>
@@ -424,7 +438,7 @@ export default function SettingsPage() {
                 </div>
                 {payday > 28 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, background: 'var(--amber-muted)', border: '1px solid rgba(245,166,35,0.25)', marginBottom: 8 }}>
-                    <span style={{ fontSize: 13 }}>⚠</span>
+                    <span style={{ display:'flex', alignItems:'center', color:'var(--amber)', flexShrink:0 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
                     <span style={{ fontSize: 11, color: 'var(--amber)' }}>
                       In months with fewer days, payday will automatically use the last day of that month (e.g. Feb 28/29, Apr 30).
                     </span>
@@ -448,7 +462,7 @@ export default function SettingsPage() {
           {/* ── APPEARANCE ── */}
           {active === 'appearance' && (
             <Card>
-              <SectionTitle icon="◐" title="Appearance" subtitle="Customize how the app looks and behaves" />
+              <SectionTitle icon={SECTION_ICONS.appearance} title="Appearance" subtitle="Customize how the app looks and behaves" />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
                 {/* Theme Picker */}
@@ -521,7 +535,7 @@ export default function SettingsPage() {
                               background: 'rgba(0,0,0,0.35)',
                               fontSize: 14,
                               color: 'white',
-                            }}>✓</div>
+                            }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
                           )}
                         </div>
                         <div style={{ fontSize: 10, fontWeight: 600, color: theme === t.id ? 'var(--accent-2)' : 'var(--text-soft)', letterSpacing: '-0.01em', textAlign: 'center', lineHeight: 1.2 }}>
@@ -581,7 +595,7 @@ export default function SettingsPage() {
           {/* ── DISPLAY ── */}
           {active === 'display' && (
             <Card>
-              <SectionTitle icon="⊞" title="Display Preferences" subtitle="Control what's visible throughout the app" />
+              <SectionTitle icon={SECTION_ICONS.display} title="Display Preferences" subtitle="Control what's visible throughout the app" />
               <div style={{ padding: '14px 16px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', marginBottom: 20 }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Example number formatting</div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 700, color: 'var(--accent)' }}>
@@ -614,7 +628,7 @@ export default function SettingsPage() {
           {/* ── ALERTS ── */}
           {active === 'notifications' && (
             <Card>
-              <SectionTitle icon="◎" title="Budget Alerts" subtitle="Get notified when you approach spending limits" />
+              <SectionTitle icon={SECTION_ICONS.notifications} title="Budget Alerts" subtitle="Get notified when you approach spending limits" />
               <div>
                 <Toggle
                   checked={budgetAlerts}
@@ -646,7 +660,7 @@ export default function SettingsPage() {
           {/* ── PASSWORD ── */}
           {active === 'password' && (
             <Card>
-              <SectionTitle icon="⊙" title="Change Password" subtitle="Update your login password" />
+              <SectionTitle icon={SECTION_ICONS.password} title="Change Password" subtitle="Update your login password" />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
                   <Label>Current password</Label>
@@ -676,7 +690,7 @@ export default function SettingsPage() {
           {active === 'data' && (
             <>
               <Card>
-                <SectionTitle icon="⇅" title="Your Data" subtitle="Export and manage your financial data" />
+                <SectionTitle icon={SECTION_ICONS.data} title="Your Data" subtitle="Export and manage your financial data" />
                 {stats && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
                     {[
@@ -712,7 +726,7 @@ export default function SettingsPage() {
           {/* ── DANGER ZONE ── */}
           {active === 'danger' && (
             <Card style={{ border: '1px solid rgba(240,82,82,0.3)' }}>
-              <SectionTitle icon="⚠" title="Danger Zone" subtitle="Irreversible actions — proceed with caution" />
+              <SectionTitle icon={SECTION_ICONS.danger} title="Danger Zone" subtitle="Irreversible actions — proceed with caution" />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ padding: '16px', borderRadius: 10, border: '1px solid rgba(240,82,82,0.2)', background: 'rgba(240,82,82,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
                   <div>

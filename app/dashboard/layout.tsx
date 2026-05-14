@@ -64,7 +64,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg)' }}>
       <Sidebar />
-      <main style={{
+      <main style={{  
         flex: 1,
         marginLeft: 'var(--sidebar-w, 228px)',
         padding: '32px 36px',

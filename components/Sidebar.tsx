@@ -1,18 +1,30 @@
 'use client';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 
+// Lucide-style SVG icons for nav
+const NAV_ICONS: Record<string, React.ReactNode> = {
+  overview:      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
+  analytics:     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+  transactions:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/><polyline points="19 7 12 0 5 7" style={{opacity:0.5}}/></svg>,
+  budgets:       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  categories:    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h10M4 18h6"/></svg>,
+  scan:          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>,
+  settings:      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>,
+};
+
 const nav = [
-  { href: '/dashboard',              label: 'Overview',     icon: '▦', desc: 'Summary & charts' },
-  { href: '/dashboard/analytics',    label: 'Analytics',    icon: '◈', desc: 'Deep insights' },
-  { href: '/dashboard/transactions', label: 'Transactions', icon: '⇅', desc: 'All entries' },
-  { href: '/dashboard/budgets',      label: 'Budgets',      icon: '◎', desc: 'Spending limits' },
-  { href: '/dashboard/categories',   label: 'Categories',   icon: '⊞', desc: 'Organize' },
-  { href: '/dashboard/scan',         label: 'Scan',         icon: '⊙', desc: 'Import screenshot', highlight: true },
-  { href: '/dashboard/settings',      label: 'Settings',     icon: '⚙', desc: 'Preferences' },
+  { href: '/dashboard',              label: 'Overview',     iconKey: 'overview',     desc: 'Summary & charts' },
+  { href: '/dashboard/analytics',    label: 'Analytics',    iconKey: 'analytics',    desc: 'Deep insights' },
+  { href: '/dashboard/transactions', label: 'Transactions', iconKey: 'transactions', desc: 'All entries' },
+  { href: '/dashboard/budgets',      label: 'Budgets',      iconKey: 'budgets',      desc: 'Spending limits' },
+  { href: '/dashboard/categories',   label: 'Categories',   iconKey: 'categories',   desc: 'Organize' },
+  { href: '/dashboard/scan',         label: 'Scan',         iconKey: 'scan',         desc: 'Import screenshot', highlight: true },
+  { href: '/dashboard/settings',     label: 'Settings',     iconKey: 'settings',     desc: 'Preferences' },
 ];
 
 export default function Sidebar() {
@@ -105,7 +117,9 @@ export default function Sidebar() {
             transform: collapsed ? 'rotate(180deg)' : 'none',
             transition: 'transform 0.3s ease, opacity 0.2s ease',
           }}
-        >◂</button>
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
       </div>
 
       {/* Nav */}
@@ -126,7 +140,7 @@ export default function Sidebar() {
           }} />
         )}
 
-        {nav.map(({ href, label, icon, highlight }, idx) => {
+        {nav.map(({ href, label, iconKey, highlight }, idx) => {
           const active = pathname === href;
           return (
             <Link
@@ -158,7 +172,7 @@ export default function Sidebar() {
                 }
               }}
             >
-              <span style={{ fontSize: 15, width: 18, textAlign: 'center', flexShrink: 0, opacity: active ? 1 : 0.7, transition: 'opacity 0.15s' }}>{icon}</span>
+              <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: active ? 1 : 0.7, transition: 'opacity 0.15s' }}>{NAV_ICONS[iconKey]}</span>
               {!collapsed && (
                 <span className="sidebar-label" style={{ fontSize: 13, fontWeight: active ? 600 : 500, letterSpacing: '-0.01em', overflow: 'hidden', transition: 'opacity 0.2s' }}>{label}</span>
               )}
@@ -233,7 +247,10 @@ export default function Sidebar() {
             (e.currentTarget as HTMLElement).style.borderColor = 'transparent';
           }}
         >
-          {collapsed ? '↗' : '↗ Sign out'}
+          {collapsed
+            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            : <span style={{display:'flex',alignItems:'center',gap:6}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign out</span>
+          }
         </button>
       </div>
     </aside>

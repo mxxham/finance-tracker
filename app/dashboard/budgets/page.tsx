@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { useSettings } from '@/lib/SettingsContext';
@@ -282,11 +282,8 @@ export default function BudgetsPage() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ category_id: '', amount: '' });
   const [loading, setLoading] = useState(true);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'insights' | 'trends' | 'recurring'>('overview');
   const [expandedCard, setExpandedCard] = useState<number | null>(null);
-  const aiRef = useRef<HTMLDivElement>(null);
 
   const daysInMonth = new Date(year, month, 0).getDate();
   const dayOfMonth = month === now.getMonth() + 1 && year === now.getFullYear() ? now.getDate() : daysInMonth;
@@ -357,46 +354,91 @@ export default function BudgetsPage() {
     catch { showToast('Failed to delete', 'error'); }
   };
 
-  const fetchAISuggestions = async () => {
-    if (!budgets.length) return;
-    setAiLoading(true); setAiSuggestions('');
-    try {
-      const summary = budgets.map(b => ({
-        category: translateCategory(b.category_name),
-        budget: Number(b.amount),
-        spent: Number(b.spent),
-        pct: Math.round((Number(b.spent) / Number(b.amount)) * 100),
-      }));
-      const prompt = [
-        `${MONTH_FULL[month - 1]} ${year} — ${Math.round(monthProgress)}% through the month.`,
-        `Total budget: ${fmt(totalBudget)} | Spent: ${fmt(totalSpent)} (${overallPct.toFixed(0)}%) | Remaining: ${fmt(totalRemaining)}`,
-        `Safe daily spend for remaining ${daysLeft} days: ${fmt(Math.round(safeDailySpend))}`,
-        `Forecast end-of-month: ${fmt(Math.round(forecastSpend))} (${forecastOver ? 'OVER budget' : 'under budget'})`,
-        '',
-        'Category breakdown:',
-        ...summary.map(b => `- ${b.category}: ${fmt(b.spent)} of ${fmt(b.budget)} (${b.pct}%)`),
-        '',
-        'Give me 3-4 specific, actionable suggestions to stay on budget this month.',
-      ].join('\n');
+  // ── Rule-based suggestions ──
+  const getRuleSuggestions = (): Array<{ icon: string; title: string; body: string; color: string }> => {
+    if (!budgets.length) return [];
+    const tips: Array<{ icon: string; title: string; body: string; color: string }> = [];
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 900,
-          system: 'You are a personal finance coach. Give 3-4 concise, actionable budget suggestions based on the exact data provided. Use bullet points starting with "-". Each point is 1-2 sentences. Be specific with amounts and category names. Be direct and encouraging.',
-          messages: [{ role: 'user', content: prompt }],
-        }),
+    // 1. Over-budget categories
+    overBudgetList.forEach(b => {
+      const overAmt = Number(b.spent) - Number(b.amount);
+      tips.push({
+        icon: 'over',
+        title: `${translateCategory(b.category_name)} is over budget`,
+        body: `You've exceeded your ${fmt(Number(b.amount))} limit by ${fmt(overAmt)}. Pause non-essential spending in this category for the rest of the month.`,
+        color: 'var(--red)',
       });
-      const data = await response.json();
-      const text = data.content?.[0]?.text ?? 'No suggestions available.';
-      setAiSuggestions(text);
-      setTimeout(() => aiRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
-    } catch (e) {
-      console.error('AI error:', e);
-      setAiSuggestions('Unable to generate suggestions right now. Please try again.');
-    } finally { setAiLoading(false); }
+    });
+
+    // 2. Near-limit categories
+    nearLimitList.forEach(b => {
+      const pct = Math.round((Number(b.spent) / Number(b.amount)) * 100);
+      const remaining = Number(b.amount) - Number(b.spent);
+      tips.push({
+        icon: 'warn',
+        title: `${translateCategory(b.category_name)} is at ${pct}%`,
+        body: `Only ${fmt(remaining)} left in this budget${daysLeft > 0 ? ` for ${daysLeft} more days` : ''}. Limit spending here to avoid going over.`,
+        color: 'var(--amber)',
+      });
+    });
+
+    // 3. Forecast over budget
+    if (isCurrentMonth && forecastOver && dayOfMonth > 3) {
+      const overBy = forecastSpend - totalBudget;
+      tips.push({
+        icon: 'down',
+        title: 'On track to exceed your total budget',
+        body: `At your current daily rate of ${fmt(Math.round(totalSpent / dayOfMonth))}/day, you'll overspend by ${fmt(Math.round(overBy))} by month end. Try to spend no more than ${fmt(Math.round(safeDailySpend > 0 ? safeDailySpend : 0))}/day.`,
+        color: 'var(--red)',
+      });
+    }
+
+    // 4. Under-used budgets (past mid-month with very low usage)
+    underUsedList.forEach(b => {
+      const free = Number(b.amount) - Number(b.spent);
+      tips.push({
+        icon: 'tip',
+        title: `${translateCategory(b.category_name)} budget is barely used`,
+        body: `You've only used ${Math.round((Number(b.spent) / Number(b.amount)) * 100)}% of this budget. Consider moving ${fmt(free)} to a category that's running low.`,
+        color: 'var(--green)',
+      });
+    });
+
+    // 5. Healthy overall — positive tip
+    if (tips.length === 0 && isCurrentMonth) {
+      tips.push({
+        icon: 'check',
+        title: "You're on track this month",
+        body: `All budgets are within limits. Keep spending ≤ ${fmt(Math.round(safeDailySpend))}/day for the remaining ${daysLeft} days to finish comfortably under budget.`,
+        color: 'var(--green)',
+      });
+    }
+
+    // 6. Recurring costs eating most of budget
+    if (recurringTotal > 0 && totalBudget > 0 && recurringTotal / totalBudget > 0.6) {
+      tips.push({
+        icon: 'repeat',
+        title: 'Recurring costs are high',
+        body: `Fixed expenses account for ${Math.round((recurringTotal / totalBudget) * 100)}% (${fmt(recurringTotal)}) of your total budget. Review subscriptions or recurring charges you might be able to reduce.`,
+        color: 'var(--purple)',
+      });
+    }
+
+    // 7. Big spender — category using most of budget
+    const biggestSpender = [...budgets].sort((a, b) => Number(b.spent) / Number(b.amount) - Number(a.spent) / Number(a.amount))[0];
+    if (biggestSpender && !overBudgetList.find(b => b.id === biggestSpender.id) && !nearLimitList.find(b => b.id === biggestSpender.id)) {
+      const pct = Math.round((Number(biggestSpender.spent) / Number(biggestSpender.amount)) * 100);
+      if (pct >= 50) {
+        tips.push({
+          icon: 'watch',
+          title: `Watch ${translateCategory(biggestSpender.category_name)}`,
+          body: `This is your highest-usage category at ${pct}% spent (${fmt(Number(biggestSpender.spent))} of ${fmt(Number(biggestSpender.amount))}). It has ${fmt(Number(biggestSpender.amount) - Number(biggestSpender.spent))} left — pace yourself.`,
+          color: 'var(--accent)',
+        });
+      }
+    }
+
+    return tips.slice(0, 5);
   };
 
   // ── Style helpers ──
@@ -465,11 +507,11 @@ export default function BudgetsPage() {
               <div>
                 <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.03em', marginBottom: 8 }}>Start tracking budgets</div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.7 }}>
-                  Set monthly spending limits per category and get live progress bars, forecasts, health scores, and AI-powered suggestions.
+                  Set monthly spending limits per category and get live progress bars, forecasts, health scores, and smart rule-based suggestions.
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {['📊 Category progress bars & health indicators', '🔮 Month-end spending forecasts', '💡 Insights: over-budget & near-limit alerts', '🤖 AI-powered budget suggestions'].map(item => (
+                {['Category progress bars & health indicators', 'Month-end spending forecasts', 'Insights: over-budget & near-limit alerts', 'Smart rule-based budget suggestions'].map(item => (
                   <div key={item} style={{ fontSize: 13, color: 'var(--text-soft)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span>{item.split(' ')[0]}</span>
                     <span>{item.split(' ').slice(1).join(' ')}</span>
@@ -588,7 +630,7 @@ export default function BudgetsPage() {
         <div style={{ display: 'flex', gap: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 4, width: 'fit-content' }}>
           {(['overview', 'insights', 'trends', 'recurring'] as const).map(tab => (
             <button key={tab} style={tabBtn(tab)} onClick={() => setActiveTab(tab)}>
-              {tab === 'overview' ? '📋 Overview' : tab === 'insights' ? '💡 Insights' : tab === 'trends' ? '📈 Trends' : '🔄 Recurring'}
+              {tab === 'overview' ? 'Overview' : tab === 'insights' ? 'Insights' : tab === 'trends' ? 'Trends' : 'Recurring'}
             </button>
           ))}
         </div>
@@ -716,7 +758,7 @@ export default function BudgetsPage() {
               border: safeDailySpend > 0 ? '1px solid rgba(34,212,122,0.2)' : '1px solid rgba(240,82,82,0.25)',
             }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
-                {safeDailySpend > 0 ? '💚' : '🔴'} Safe Daily Spending
+                Safe Daily Spending
               </div>
               <div style={{ fontSize: 34, fontWeight: 700, fontFamily: 'var(--font-mono)', letterSpacing: '-0.04em', marginBottom: 6, color: safeDailySpend > 0 ? 'var(--green)' : 'var(--red)' }}>
                 {safeDailySpend > 0 ? fmt(Math.round(safeDailySpend)) : 'Over!'}
@@ -754,7 +796,7 @@ export default function BudgetsPage() {
             {overBudgetList.length > 0 ? (
               <div style={{ ...card, border: '1px solid rgba(240,82,82,0.25)', background: 'rgba(240,82,82,0.04)' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--red)', marginBottom: 12 }}>
-                  🚨 Over Budget <span style={{ fontWeight: 400, opacity: 0.7 }}>({overBudgetList.length})</span>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:5}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Over Budget</span> <span style={{ fontWeight: 400, opacity: 0.7 }}>({overBudgetList.length})</span>
                 </div>
                 {overBudgetList.map(b => {
                   const overAmt = Number(b.spent) - Number(b.amount);
@@ -778,7 +820,7 @@ export default function BudgetsPage() {
               </div>
             ) : (
               <div style={{ ...card, border: '1px solid rgba(34,212,122,0.15)', background: 'rgba(34,212,122,0.03)', textAlign: 'center', padding: '28px 20px' }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>🎯</div>
+                <div style={{ marginBottom: 8, display:'flex', justifyContent:'center', color:'var(--green)', opacity:0.6 }}><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--green)', marginBottom: 4 }}>No overspending!</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>All categories are within their budget.</div>
               </div>
@@ -788,7 +830,7 @@ export default function BudgetsPage() {
             {nearLimitList.length > 0 && (
               <div style={{ ...card, border: '1px solid rgba(245,166,35,0.2)', background: 'rgba(245,166,35,0.03)' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--amber)', marginBottom: 12 }}>
-                  ⚠️ Near Limit <span style={{ fontWeight: 400, opacity: 0.7 }}>({nearLimitList.length})</span>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:5}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Near Limit</span> <span style={{ fontWeight: 400, opacity: 0.7 }}>({nearLimitList.length})</span>
                 </div>
                 {nearLimitList.map(b => {
                   const pct = (Number(b.spent) / Number(b.amount)) * 100;
@@ -815,7 +857,7 @@ export default function BudgetsPage() {
             {underUsedList.length > 0 && (
               <div style={{ ...card, border: '1px solid rgba(34,212,122,0.15)', background: 'rgba(34,212,122,0.03)' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--green)', marginBottom: 4 }}>
-                  ✅ Under-used Budgets
+                  <span style={{display:"inline-flex",alignItems:"center",gap:5}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Under-used Budgets</span>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
                   Low usage past mid-month — consider reallocating these funds.
@@ -866,12 +908,16 @@ export default function BudgetsPage() {
                 </div>
               </div>
               {[
-                { label: 'On track', value: budgets.filter(b => (Number(b.spent) / Number(b.amount)) * 100 < 80).length, color: 'var(--green)', icon: '✅' },
-                { label: 'Near limit (80–100%)', value: nearLimitList.length, color: 'var(--amber)', icon: '⚠️' },
-                { label: 'Over budget', value: overBudgetList.length, color: 'var(--red)', icon: '🚨' },
+                { label: 'On track', value: budgets.filter(b => (Number(b.spent) / Number(b.amount)) * 100 < 80).length, color: 'var(--green)', icon: 'check' },
+                { label: 'Near limit (80–100%)', value: nearLimitList.length, color: 'var(--amber)', icon: 'warn' },
+                { label: 'Over budget', value: overBudgetList.length, color: 'var(--red)', icon: 'over' },
               ].map(item => (
                 <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: 'var(--surface-2)', marginBottom: 4 }}>
-                  <span>{item.icon}</span>
+                  {{
+                    check: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+                    warn:  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+                    over:  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>,
+                  }[item.icon]}
                   <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1 }}>{item.label}</span>
                   <span style={{ fontSize: 12, fontWeight: 700, color: item.color, fontFamily: 'var(--font-mono)' }}>{item.value}/{budgets.length}</span>
                 </div>
@@ -886,7 +932,13 @@ export default function BudgetsPage() {
                 background: forecastOver ? 'rgba(240,82,82,0.04)' : 'rgba(34,212,122,0.03)',
               }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: forecastOver ? 'var(--red)' : 'var(--green)', marginBottom: 8 }}>
-                  {forecastOver ? '📉 Forecast: Over Budget' : '📈 Forecast: On Track'}
+                  <span style={{display:"inline-flex",alignItems:"center",gap:6}}>
+                    {forecastOver
+                      ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    }
+                    {forecastOver ? 'Forecast: Over Budget' : 'Forecast: On Track'}
+                  </span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
                   {[
@@ -907,45 +959,37 @@ export default function BudgetsPage() {
               </div>
             )}
 
-            {/* AI Suggestions */}
+            {/* Rule-based Suggestions */}
             <div style={{ ...card }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>🤖 AI Suggestions</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Personalized advice based on your data</div>
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2, display:'flex', alignItems:'center', gap:6 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  Smart Suggestions
                 </div>
-                <button
-                  onClick={fetchAISuggestions}
-                  disabled={aiLoading || budgets.length === 0}
-                  style={{
-                    padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                    background: aiLoading ? 'var(--surface-2)' : 'var(--accent)',
-                    color: aiLoading ? 'var(--text-muted)' : 'white',
-                    border: 'none', cursor: aiLoading ? 'default' : 'pointer',
-                    transition: 'all 0.2s', boxShadow: aiLoading ? 'none' : '0 3px 10px rgba(91,110,245,0.3)',
-                    whiteSpace: 'nowrap',
-                  }}>
-                  {aiLoading ? '⏳ Thinking...' : '✨ Analyze'}
-                </button>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Personalised tips based on your budget data</div>
               </div>
-              {aiSuggestions ? (
-                <div ref={aiRef} style={{
-                  padding: 14, borderRadius: 10,
-                  background: 'var(--surface-2)', border: '1px solid var(--border)',
-                  fontSize: 12, lineHeight: 1.8, color: 'var(--text-soft)',
-                  whiteSpace: 'pre-wrap', animation: 'fadeIn 0.3s ease',
-                }}>
-                  {aiSuggestions}
-                </div>
-              ) : aiLoading ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 0' }}>
-                  <Skeleton h={10} /><Skeleton h={10} w="85%" /><Skeleton h={10} w="90%" /><Skeleton h={10} w="75%" />
-                </div>
-              ) : (
-                <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)', fontSize: 12 }}>
-                  Click Analyze for personalized budget tips from AI
-                </div>
-              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {getRuleSuggestions().map((tip, i) => {
+                  const iconMap: Record<string, React.ReactNode> = {
+                    over:   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+                    warn:   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+                    down:   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>,
+                    tip:    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="2" x2="12" y2="6"/><path d="M12 18a6 6 0 000-12"/><line x1="12" y1="22" x2="12" y2="18"/></svg>,
+                    check:  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+                    repeat: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>,
+                    watch:  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+                  };
+                  return (
+                    <div key={i} style={{ padding: '11px 13px', borderRadius: 10, background: 'var(--surface-2)', borderLeft: `3px solid ${tip.color}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, color: tip.color }}>
+                        {iconMap[tip.icon]}
+                        <span style={{ fontSize: 12, fontWeight: 700 }}>{tip.title}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.6, paddingLeft: 19 }}>{tip.body}</div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
@@ -1027,7 +1071,7 @@ export default function BudgetsPage() {
             </div>
             {recurringTxns.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                <div style={{ fontSize: 36, marginBottom: 8, opacity: 0.2 }}>🔄</div>
+                <div style={{ marginBottom: 8, opacity: 0.2, display:"flex", justifyContent:"center" }}><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg></div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>No recurring transactions found</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', opacity: 0.7 }}>Mark transactions as recurring on the Transactions page</div>
               </div>
@@ -1080,7 +1124,7 @@ export default function BudgetsPage() {
             )}
             <div style={{ ...card, background: 'linear-gradient(135deg, rgba(91,110,245,0.06) 0%, var(--surface) 60%)', border: '1px solid rgba(91,110,245,0.15)' }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
-                📅 Month Progress
+                Month Progress
               </div>
               <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--accent)', marginBottom: 4 }}>
                 {daysLeft}d left

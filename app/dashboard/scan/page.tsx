@@ -139,7 +139,7 @@ export default function ScanPage() {
         {APPS.map(app => (
           <span key={app} style={{ fontSize: 11, padding: '4px 10px', borderRadius: 99, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)', fontWeight: 500 }}>{app}</span>
         ))}
-        <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 99, background: 'var(--accent-glow)', border: '1px solid rgba(91,110,245,0.25)', color: 'var(--accent-2)', fontWeight: 600 }}>🔒 100% local</span>
+        <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 99, background: 'var(--accent-glow)', border: '1px solid rgba(91,110,245,0.25)', color: 'var(--accent-2)', fontWeight: 600, display:'inline-flex', alignItems:'center', gap:4 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>100% local</span>
       </div>
 
       {/* Upload or Preview */}
@@ -181,7 +181,7 @@ export default function ScanPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {status === 'idle' && (
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 28, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center' }}>
-                <div style={{ width: 48, height: 48, borderRadius: 13, background: 'var(--accent-glow)', border: '1px solid rgba(91,110,245,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>⊙</div>
+                <div style={{ width: 48, height: 48, borderRadius: 13, background: 'var(--accent-glow)', border: '1px solid rgba(91,110,245,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
                 <div>
                   <p style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 5 }}>Ready to scan</p>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Tesseract OCR will read and extract transaction data from your screenshot</p>
@@ -313,7 +313,7 @@ export default function ScanPage() {
       {/* Success */}
       {saved && (
         <div style={{ background: 'var(--surface)', border: '1px solid rgba(34,212,122,0.25)', borderRadius: 14, padding: '48px 40px', textAlign: 'center' }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--green-muted)', border: '1px solid rgba(34,212,122,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 20px' }}>✓</div>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--green-muted)', border: '1px solid rgba(34,212,122,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--green)', margin: '0 auto 20px' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
           <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.04em', color: 'var(--green)', marginBottom: 8 }}>Saved successfully!</h2>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>{editedTxs.length} transactions added to your financial history</p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
@@ -327,12 +327,12 @@ export default function ScanPage() {
       {!imageDataUrl && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
           {[
-            { icon: '📱', title: 'Best Screenshot Tips', desc: 'Use the transactions history page. Ensure amounts are clearly visible. Avoid blurry or cropped images.' },
-            { icon: '🔒', title: 'Fully Private', desc: 'Tesseract.js runs directly in your browser. Screenshots are never uploaded to any server.' },
-            { icon: '✏️', title: 'Always Editable', desc: 'After scanning, correct categories, amounts, or dates before saving. View raw OCR text if needed.' },
+            { icon: 'screenshot', title: 'Best Screenshot Tips', desc: 'Use the transactions history page. Ensure amounts are clearly visible. Avoid blurry or cropped images.' },
+            { icon: 'lock', title: 'Fully Private', desc: 'Tesseract.js runs directly in your browser. Screenshots are never uploaded to any server.' },
+            { icon: 'edit', title: 'Always Editable', desc: 'After scanning, correct categories, amounts, or dates before saving. View raw OCR text if needed.' },
           ].map(tip => (
             <div key={tip.title} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
-              <div style={{ fontSize: 20, marginBottom: 10 }}>{tip.icon}</div>
+              {tip.icon === 'screenshot' && <div style={{ marginBottom: 10, color: 'var(--accent)' }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="13" y2="15"/></svg></div>}{tip.icon === 'lock' && <div style={{ marginBottom: 10, color: 'var(--green)' }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>}{tip.icon === 'edit' && <div style={{ marginBottom: 10, color: 'var(--amber)' }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>}
               <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 6 }}>{tip.title}</p>
               <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.55 }}>{tip.desc}</p>
             </div>
