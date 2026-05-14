@@ -22,8 +22,16 @@ function SectionTitle({ icon, title, subtitle }: { icon: React.ReactNode; title:
 }
 
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  const [isMobileCard, setIsMobileCard] = React.useState(false);
+  React.useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    setIsMobileCard(mq.matches);
+    const h = (e: MediaQueryListEvent) => setIsMobileCard(e.matches);
+    mq.addEventListener('change', h);
+    return () => mq.removeEventListener('change', h);
+  }, []);
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, ...style }}>
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: isMobileCard ? 16 : 24, ...style }}>
       {children}
     </div>
   );
@@ -135,6 +143,16 @@ export default function SettingsPage() {
 
   // Stats
   const [stats, setStats] = useState<{ txCount: number; catCount: number; memberSince: string } | null>(null);
+
+  // Responsive
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   useEffect(() => {
     // Keep local inputs in sync with loaded user/settings.
@@ -274,10 +292,15 @@ export default function SettingsPage() {
         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Manage your account, preferences, and data</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 20, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '200px 1fr', gap: 20, alignItems: 'start' }}>
         {/* Side nav */}
-        <div className="animate-fadeUp" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', position: 'sticky', top: 32 }}>
-          {/* User mini card */}
+        <div className="animate-fadeUp" style={isMobile ? {
+          background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden',
+        } : {
+          background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', position: 'sticky', top: 32,
+        }}>
+          {/* User mini card - hide on mobile to save space */}
+          {!isMobile && (
           <div style={{ padding: '18px 16px 14px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), var(--purple))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: 'white' }}>{initials}</div>
             <div style={{ textAlign: 'center' }}>
@@ -285,14 +308,26 @@ export default function SettingsPage() {
               <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 148 }}>{user?.email}</div>
             </div>
           </div>
+          )}
 
           {/* Nav items */}
-          <div style={{ padding: '8px 8px' }}>
+          <div style={isMobile ? {
+            display: 'flex', overflowX: 'auto', padding: '8px', gap: 4,
+            scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch',
+          } : { padding: '8px 8px' }}>
             {SECTIONS.map(s => (
               <button
                 key={s.id}
                 onClick={() => setActive(s.id)}
-                style={{
+                style={isMobile ? {
+                  flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                  padding: '8px 12px', borderRadius: 10, border: 'none',
+                  background: active === s.id ? 'var(--accent-glow)' : 'transparent',
+                  color: active === s.id ? 'var(--accent-2)' : 'var(--text-soft)',
+                  fontSize: 10, fontWeight: active === s.id ? 700 : 500,
+                  transition: 'all 0.15s ease',
+                  ...(s.id === 'danger' ? { color: active === s.id ? 'var(--red)' : 'var(--text-muted)', background: active === s.id ? 'rgba(240,82,82,0.08)' : 'transparent' } : {}),
+                } : {
                   width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                   padding: '8px 10px', borderRadius: 8, border: 'none', textAlign: 'left',
                   background: active === s.id ? 'var(--accent-glow)' : 'transparent',
@@ -305,7 +340,7 @@ export default function SettingsPage() {
                 onMouseLeave={e => { if (active !== s.id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
               >
                 <span style={{ fontSize: 13, opacity: 0.8, display:'flex', alignItems:'center' }}>{SECTION_ICONS[s.iconKey]}</span>
-                {s.label}
+                {isMobile ? <span style={{ whiteSpace: 'nowrap' }}>{s.label}</span> : s.label}
               </button>
             ))}
           </div>
@@ -370,7 +405,7 @@ export default function SettingsPage() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, maxHeight: 380, overflowY: 'auto', marginBottom: 20, paddingRight: 4 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 8, maxHeight: 380, overflowY: 'auto', marginBottom: 20, paddingRight: 4 }}>
                 {filteredCurrencies.map(c => (
                   <button
                     key={c.code}
@@ -453,7 +488,7 @@ export default function SettingsPage() {
               <SectionTitle icon={SECTION_ICONS.payday} title="Payday & Budget Cycle" subtitle="Set when you get paid — used for the payday survival budget" />
               <div style={{ marginBottom: 24 }}>
                 <Label>Day of month you get paid</Label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, marginBottom: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(7, 1fr)' : 'repeat(7, 1fr)', gap: 8, marginBottom: 8 }}>
                   {Array.from({ length: 31 }, (_, i) => i + 1).map(d => {
                     const isLate = d > 28;
                     return (
@@ -510,8 +545,10 @@ export default function SettingsPage() {
                 {/* Theme Picker */}
                 <div>
                   <Label>Color theme</Label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
-                    {THEMES.map(t => (
+                  {(() => {
+                    const darkThemes = THEMES.filter(t => !t.isLight);
+                    const lightThemes = THEMES.filter(t => t.isLight);
+                    const renderThemeButton = (t: typeof THEMES[0]) => (
                       <button
                         key={t.id}
                         onClick={() => {
@@ -525,8 +562,8 @@ export default function SettingsPage() {
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
-                          gap: 8,
-                          padding: '10px 8px 10px',
+                          gap: isMobile ? 5 : 8,
+                          padding: isMobile ? '7px 4px 7px' : '10px 8px 10px',
                           borderRadius: 12,
                           border: 'none',
                           background: theme === t.id ? 'var(--accent-glow)' : 'var(--surface-2)',
@@ -539,11 +576,11 @@ export default function SettingsPage() {
                       >
                         {/* Swatch */}
                         <div style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 10,
+                          width: isMobile ? 32 : 40,
+                          height: isMobile ? 32 : 40,
+                          borderRadius: 8,
                           background: t.swatchBg,
-                          border: '1px solid rgba(255,255,255,0.08)',
+                          border: t.isLight ? '1px solid rgba(0,0,0,0.10)' : '1px solid rgba(255,255,255,0.08)',
                           position: 'relative',
                           overflow: 'hidden',
                           flexShrink: 0,
@@ -574,18 +611,31 @@ export default function SettingsPage() {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              background: 'rgba(0,0,0,0.35)',
+                              background: t.isLight ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.35)',
                               fontSize: 14,
                               color: 'white',
-                            }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                            }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={t.isLight ? '#111' : 'white'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
                           )}
                         </div>
-                        <div style={{ fontSize: 10, fontWeight: 600, color: theme === t.id ? 'var(--accent-2)' : 'var(--text-soft)', letterSpacing: '-0.01em', textAlign: 'center', lineHeight: 1.2 }}>
+                        <div style={{ fontSize: isMobile ? 8 : 10, fontWeight: 600, color: theme === t.id ? 'var(--accent-2)' : 'var(--text-soft)', letterSpacing: '-0.01em', textAlign: 'center', lineHeight: 1.2 }}>
                           {t.name}
                         </div>
                       </button>
-                    ))}
-                  </div>
+                    );
+                    return (
+                      <>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Dark</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(5, 1fr)' : 'repeat(5, 1fr)', gap: isMobile ? 6 : 10, marginBottom: 14 }}>
+                          {darkThemes.map(renderThemeButton)}
+                        </div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Light</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(5, 1fr)' : 'repeat(5, 1fr)', gap: isMobile ? 6 : 10 }}>
+                          {lightThemes.map(renderThemeButton)}
+                        </div>
+                      </>
+                    );
+                  })()}
+                  
                   {/* Description of selected theme */}
                   <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 9, background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
@@ -689,8 +739,11 @@ export default function SettingsPage() {
                   />
                   <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: alertThreshold >= 90 ? 'var(--red)' : alertThreshold >= 75 ? 'var(--amber)' : 'var(--green)', minWidth: 42, textAlign: 'right' }}>{alertThreshold}%</div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
-                  {[[70,'70% — Early warning'], [80,'80% — Standard'], [90,'90% — Last chance']].map(([v, l]) => (
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3,1fr)' : 'repeat(3,1fr)', gap: 8 }}>
+                  {(isMobile
+                    ? [[70,'70%'],[80,'80%'],[90,'90%']]
+                    : [[70,'70% — Early warning'],[80,'80% — Standard'],[90,'90% — Last chance']]
+                  ).map(([v, l]) => (
                     <button key={v} onClick={() => setAlertThreshold(Number(v))} style={{ padding: '8px', borderRadius: 8, border: 'none', fontSize: 11, fontWeight: 600, background: alertThreshold === Number(v) ? 'var(--accent)' : 'var(--surface-2)', color: alertThreshold === Number(v) ? 'white' : 'var(--text-muted)', transition: 'all 0.15s' }}>{l}</button>
                   ))}
                 </div>
@@ -734,7 +787,7 @@ export default function SettingsPage() {
               <Card>
                 <SectionTitle icon={SECTION_ICONS.data} title="Your Data" subtitle="Export and manage your financial data" />
                 {stats && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
                     {[
                       { label: 'Transactions', value: stats.txCount },
                       { label: 'Categories', value: stats.catCount },
@@ -770,27 +823,27 @@ export default function SettingsPage() {
             <Card style={{ border: '1px solid rgba(240,82,82,0.3)' }}>
               <SectionTitle icon={SECTION_ICONS.danger} title="Danger Zone" subtitle="Irreversible actions — proceed with caution" />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ padding: '16px', borderRadius: 10, border: '1px solid rgba(240,82,82,0.2)', background: 'rgba(240,82,82,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                <div style={{ padding: '16px', borderRadius: 10, border: '1px solid rgba(240,82,82,0.2)', background: 'rgba(240,82,82,0.05)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', gap: 12 }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>Sign out of all devices</div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Invalidates your current session and logs you out</div>
                   </div>
                   <button
                     onClick={logout}
-                    style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(240,82,82,0.3)', background: 'rgba(240,82,82,0.08)', color: 'var(--red)', fontSize: 12, fontWeight: 700, flexShrink: 0, transition: 'all 0.15s' }}
+                    style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(240,82,82,0.3)', background: 'rgba(240,82,82,0.08)', color: 'var(--red)', fontSize: 12, fontWeight: 700, flexShrink: 0, transition: 'all 0.15s', alignSelf: isMobile ? 'flex-start' : 'auto' }}
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(240,82,82,0.15)'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(240,82,82,0.08)'; }}
                   >
                     Sign out
                   </button>
                 </div>
-                <div style={{ padding: '16px', borderRadius: 10, border: '1px solid rgba(240,82,82,0.2)', background: 'rgba(240,82,82,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                <div style={{ padding: '16px', borderRadius: 10, border: '1px solid rgba(240,82,82,0.2)', background: 'rgba(240,82,82,0.05)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', gap: 12 }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--red)' }}>Delete all transactions</div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Permanently deletes all your transaction data. Cannot be undone.</div>
                   </div>
                   <button
-                    style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(240,82,82,0.3)', background: 'rgba(240,82,82,0.08)', color: 'var(--red)', fontSize: 12, fontWeight: 700, flexShrink: 0, opacity: 0.5, cursor: 'not-allowed' }}
+                    style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(240,82,82,0.3)', background: 'rgba(240,82,82,0.08)', color: 'var(--red)', fontSize: 12, fontWeight: 700, flexShrink: 0, opacity: 0.5, cursor: 'not-allowed', alignSelf: isMobile ? 'flex-start' : 'auto' }}
                     title="Coming soon"
                   >
                     Delete
