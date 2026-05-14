@@ -6,17 +6,23 @@ import { useSettings } from '@/lib/SettingsContext';
 import { showToast } from '@/components/Toast';
 
 interface Budget {
-  id: number;
-  amount: number;
-  spent: number;
-  category_id: number;
-  category_name: string;
-  category_color: string;
-  month: number;
-  year: number;
+  id: number; amount: number; spent: number;
+  category_id: number; category_name: string; category_color: string;
+  month: number; year: number;
 }
 interface Category { id: number; name: string; color: string; type: string; }
-interface Transaction { id: number; amount: number; category_id: number; category_name: string; date: string; type: string; description: string; is_recurring?: boolean; }
+interface Transaction {
+  id: number; amount: number; category_id: number;
+  category_name: string; date: string; type: string;
+  description: string; is_recurring?: boolean;
+}
+interface DailyRow { day: number; type: string; total: number; }
+interface TrendRow { month: number; year: number; type: string; total: number; }
+interface StatsData {
+  income: number; expenses: number;
+  trend: TrendRow[];
+  daily: DailyRow[];
+}
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MONTH_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -26,34 +32,28 @@ const LABEL_STYLE: React.CSSProperties = {
   color: 'var(--text-muted)', marginBottom: 6,
   letterSpacing: '0.02em', textTransform: 'uppercase',
 };
-const MODAL_STYLE: React.CSSProperties = {
-  position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center',
-  padding: 20, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', animation: 'fadeIn 0.15s ease both',
-};
-const MODAL_BOX: React.CSSProperties = {
-  width: '100%', maxWidth: 420, borderRadius: 20, background: 'var(--surface)',
-  border: '1px solid var(--border-2)', padding: 28, boxShadow: '0 32px 80px rgba(0,0,0,0.7)',
-  animation: 'scaleIn 0.2s cubic-bezier(0.34,1.2,0.64,1) both', display: 'flex', flexDirection: 'column', gap: 16,
-};
+
+// ── Sub-components ─────────────────────────────────────────────
 
 function Skeleton({ w, h, r = 6 }: { w?: number | string; h: number; r?: number }) {
-  return <div className="skeleton" style={{ width: w || '100%', height: h, borderRadius: r }} />;
+  return <div className="skeleton" style={{ width: w ?? '100%', height: h, borderRadius: r }} />;
 }
 
-function AnimatedBar({ pct, color, delay = 0 }: { pct: number; color: string; delay?: number }) {
+function AnimatedBar({ pct, color, delay = 0, height = 8 }: {
+  pct: number; color: string; delay?: number; height?: number;
+}) {
   const [width, setWidth] = useState(0);
   useEffect(() => {
-    const t = setTimeout(() => setWidth(Math.min(pct, 100)), 100 + delay);
+    const t = setTimeout(() => setWidth(Math.min(pct, 100)), 80 + delay);
     return () => clearTimeout(t);
   }, [pct, delay]);
   return (
-    <div style={{ height: 8, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden' }}>
+    <div style={{ height, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden' }}>
       <div style={{
-        height: '100%', borderRadius: 99,
-        width: `${width}%`,
+        height: '100%', borderRadius: 99, width: `${width}%`,
         background: color,
-        transition: 'width 0.9s cubic-bezier(0.34,1.05,0.64,1)',
-        boxShadow: `0 0 8px ${color}66`,
+        transition: 'width 0.85s cubic-bezier(0.34,1.05,0.64,1)',
+        boxShadow: `0 0 8px ${color}55`,
       }} />
     </div>
   );
@@ -63,12 +63,211 @@ function HealthDot({ score }: { score: number }) {
   const color = score >= 80 ? 'var(--green)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
   const label = score >= 80 ? 'Healthy' : score >= 50 ? 'Watch Out' : 'At Risk';
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}` }} />
-      <span style={{ fontSize: 11, fontWeight: 600, color, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+      <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, boxShadow: `0 0 5px ${color}` }} />
+      <span style={{ fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
     </div>
   );
 }
+
+function DonutChart({ budgets, fmt }: { budgets: Budget[]; fmt: (n: number) => string }) {
+  const [hovered, setHovered] = useState<number | null>(null);
+  const size = 180, r = 70;
+  const cx = size / 2, cy = size / 2;
+  const circ = 2 * Math.PI * r;
+  const total = budgets.reduce((s, b) => s + Number(b.amount), 0);
+  const totalSpent = budgets.reduce((s, b) => s + Number(b.spent), 0);
+  const overallPct = total > 0 ? Math.min((totalSpent / total) * 100, 100) : 0;
+
+  if (!budgets.length || total === 0) return null;
+
+  let offset = 0;
+  const arcs = budgets.map(b => {
+    const dash = (Number(b.amount) / total) * circ;
+    const arc = { id: b.id, dash, offset, color: b.category_color, name: translateCategory(b.category_name), amount: Number(b.amount), spent: Number(b.spent) };
+    offset += dash + 2;
+    return arc;
+  });
+
+  const hov = hovered !== null ? arcs.find(a => a.id === hovered) : null;
+
+  return (
+    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--surface-2)" strokeWidth="18" />
+        {arcs.map(arc => (
+          <circle key={arc.id} cx={cx} cy={cy} r={r} fill="none"
+            stroke={arc.color}
+            strokeWidth={hovered === arc.id ? 22 : 18}
+            strokeDasharray={`${arc.dash - 2} ${circ - (arc.dash - 2)}`}
+            strokeDashoffset={-arc.offset}
+            strokeLinecap="round"
+            style={{ transition: 'stroke-width 0.15s ease, opacity 0.15s ease', opacity: hovered !== null && hovered !== arc.id ? 0.3 : 1, cursor: 'pointer' }}
+            onMouseEnter={() => setHovered(arc.id)}
+            onMouseLeave={() => setHovered(null)}
+          />
+        ))}
+        <circle cx={cx} cy={cy} r={r - 10} fill="none"
+          stroke={overallPct >= 100 ? 'var(--red)' : overallPct >= 80 ? 'var(--amber)' : 'var(--green)'}
+          strokeWidth="4"
+          strokeDasharray={`${(overallPct / 100) * (2 * Math.PI * (r - 10))} ${2 * Math.PI * (r - 10)}`}
+          strokeLinecap="round" opacity="0.5"
+        />
+      </svg>
+      <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+        {hov ? (
+          <>
+            <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2, textAlign: 'center', maxWidth: 60 }}>{hov.name}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: hov.color }}>{fmt(hov.spent)}</div>
+            <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>of {fmt(hov.amount)}</div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>Spent</div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{overallPct.toFixed(0)}%</div>
+            <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>{fmt(totalSpent)}</div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SpendingTrendChart({ dailyData, totalBudget, daysInMonth, dayOfMonth, fmt }: {
+  dailyData: Array<{ day: number; total: number }>;
+  totalBudget: number; daysInMonth: number; dayOfMonth: number;
+  fmt: (n: number) => string;
+}) {
+  const W = 560, H = 130;
+  const PAD = { t: 12, r: 60, b: 28, l: 52 };
+  const cW = W - PAD.l - PAD.r;
+  const cH = H - PAD.t - PAD.b;
+
+  // Build cumulative by day
+  const cum: number[] = Array(daysInMonth).fill(0);
+  dailyData.forEach(d => { if (d.day >= 1 && d.day <= daysInMonth) cum[d.day - 1] = d.total; });
+  for (let i = 1; i < daysInMonth; i++) cum[i] = (cum[i] || 0) + cum[i - 1];
+
+  const currentSpent = cum[Math.max(dayOfMonth - 1, 0)] || 0;
+  const dailyRate = dayOfMonth > 0 ? currentSpent / dayOfMonth : 0;
+  const forecastEnd = dailyRate * daysInMonth;
+  const maxVal = Math.max(totalBudget * 1.1, forecastEnd, currentSpent, 1);
+
+  const xOf = (day: number) => PAD.l + ((day - 1) / Math.max(daysInMonth - 1, 1)) * cW;
+  const yOf = (val: number) => PAD.t + cH - (val / maxVal) * cH;
+
+  const actualPts = cum.slice(0, dayOfMonth).map((v, i) => `${xOf(i + 1)},${yOf(v)}`).join(' ');
+  const budgetY = yOf(totalBudget);
+  const overBudget = forecastEnd > totalBudget;
+  const yLabels = [0, 0.5, 1].map(f => ({ val: maxVal * f, y: yOf(maxVal * f) }));
+  const xTicks = [1, 8, 15, 22, daysInMonth].filter((v, i, a) => a.indexOf(v) === i && v <= daysInMonth);
+
+  const areaPath = actualPts
+    ? `M ${xOf(1)},${yOf(0)} L ${actualPts.split(' ').join(' L ')} L ${xOf(dayOfMonth)},${yOf(0)} Z`
+    : '';
+
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible' }}>
+      <defs>
+        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {/* Grid */}
+      {yLabels.map(({ val, y }) => (
+        <g key={val}>
+          <line x1={PAD.l} y1={y} x2={W - PAD.r} y2={y} stroke="var(--border)" strokeWidth="1" strokeDasharray="4,4" />
+          <text x={PAD.l - 5} y={y + 4} textAnchor="end" fontSize="9" fill="var(--text-muted)" fontFamily="var(--font-mono)">
+            {val >= 1000000 ? `${(val/1000000).toFixed(1)}M` : val >= 1000 ? `${(val/1000).toFixed(0)}k` : Math.round(val).toString()}
+          </text>
+        </g>
+      ))}
+      {/* Budget line */}
+      <line x1={PAD.l} y1={budgetY} x2={W - PAD.r} y2={budgetY} stroke="var(--amber)" strokeWidth="1.5" strokeDasharray="6,3" opacity="0.8" />
+      <text x={W - PAD.r + 6} y={budgetY + 4} fontSize="9" fill="var(--amber)" fontFamily="var(--font-mono)">Budget</text>
+      {/* Area */}
+      {areaPath && <path d={areaPath} fill="url(#areaGrad)" />}
+      {/* Forecast line */}
+      {dayOfMonth < daysInMonth && currentSpent > 0 && (
+        <line
+          x1={xOf(dayOfMonth)} y1={yOf(currentSpent)}
+          x2={xOf(daysInMonth)} y2={yOf(forecastEnd)}
+          stroke={overBudget ? 'var(--red)' : 'var(--green)'}
+          strokeWidth="2" strokeDasharray="5,3" strokeLinecap="round" opacity="0.8"
+        />
+      )}
+      {/* Actual line */}
+      {actualPts && (
+        <polyline points={actualPts} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      )}
+      {/* Today dot */}
+      {dayOfMonth > 0 && dayOfMonth <= daysInMonth && (
+        <>
+          <line x1={xOf(dayOfMonth)} y1={PAD.t} x2={xOf(dayOfMonth)} y2={H - PAD.b} stroke="var(--text-muted)" strokeWidth="1" strokeDasharray="3,3" opacity="0.4" />
+          <circle cx={xOf(dayOfMonth)} cy={yOf(currentSpent)} r="4" fill="var(--accent)" stroke="var(--surface)" strokeWidth="2" />
+        </>
+      )}
+      {/* Forecast end dot */}
+      {dayOfMonth < daysInMonth && currentSpent > 0 && (
+        <circle cx={xOf(daysInMonth)} cy={yOf(forecastEnd)} r="3.5" fill={overBudget ? 'var(--red)' : 'var(--green)'} stroke="var(--surface)" strokeWidth="2" opacity="0.9" />
+      )}
+      {/* X-axis */}
+      {xTicks.map(day => (
+        <text key={day} x={xOf(day)} y={H - PAD.b + 12} textAnchor="middle" fontSize="9" fill="var(--text-muted)" fontFamily="var(--font-mono)">{day}</text>
+      ))}
+    </svg>
+  );
+}
+
+function MonthlyBarChart({ trendData }: { trendData: TrendRow[] }) {
+  const now = new Date();
+  const months6 = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+    return { month: d.getMonth() + 1, year: d.getFullYear(), label: MONTHS[d.getMonth()] };
+  });
+  const values = months6.map(m => {
+    const row = trendData.find(r => Number(r.month) === m.month && Number(r.year) === m.year && r.type === 'expense');
+    return row ? Number(row.total) : 0;
+  });
+  const maxVal = Math.max(...values, 1);
+  const W = 560, H = 100;
+  const barW = 60, gap = (W - barW * 6) / 7;
+
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H + 20}`} style={{ overflow: 'visible' }}>
+      {values.map((val, i) => {
+        const x = gap + i * (barW + gap);
+        const barH = Math.max((val / maxVal) * H, val > 0 ? 4 : 0);
+        const y = H - barH;
+        const isLatest = i === 5;
+        return (
+          <g key={i}>
+            <rect x={x} y={0} width={barW} height={H} rx={6} fill="var(--surface-2)" />
+            <rect x={x} y={y} width={barW} height={barH} rx={6}
+              fill={isLatest ? 'var(--accent)' : 'var(--border-2)'}
+              opacity={isLatest ? 0.9 : 0.6}
+            />
+            {val > 0 && (
+              <text x={x + barW / 2} y={y - 5} textAnchor="middle" fontSize="8.5"
+                fill={isLatest ? 'var(--accent-2)' : 'var(--text-muted)'}
+                fontFamily="var(--font-mono)" fontWeight="600">
+                {val >= 1000000 ? `${(val/1000000).toFixed(1)}M` : val >= 1000 ? `${(val/1000).toFixed(0)}k` : Math.round(val).toString()}
+              </text>
+            )}
+            <text x={x + barW / 2} y={H + 14} textAnchor="middle" fontSize="10"
+              fill={isLatest ? 'var(--text-soft)' : 'var(--text-muted)'}
+              fontFamily="var(--font-sans)" fontWeight={isLatest ? '700' : '400'}>
+              {months6[i].label}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ── Main Page ───────────────────────────────────────────────────
 
 export default function BudgetsPage() {
   const { fmt } = useSettings();
@@ -79,51 +278,76 @@ export default function BudgetsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [prevBudgets, setPrevBudgets] = useState<Budget[]>([]);
+  const [stats, setStats] = useState<StatsData | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ category_id: '', amount: '' });
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'overview'|'recurring'|'insights'|'trends'>('overview');
-  const [expandedCard, setExpandedCard] = useState<number|null>(null);
+  const [aiSuggestions, setAiSuggestions] = useState('');
+  const [activeTab, setActiveTab] = useState<'overview' | 'insights' | 'trends' | 'recurring'>('overview');
+  const [expandedCard, setExpandedCard] = useState<number | null>(null);
   const aiRef = useRef<HTMLDivElement>(null);
 
   const daysInMonth = new Date(year, month, 0).getDate();
-  const dayOfMonth = month === now.getMonth() + 1 && year === now.getFullYear()
-    ? now.getDate()
-    : daysInMonth;
+  const dayOfMonth = month === now.getMonth() + 1 && year === now.getFullYear() ? now.getDate() : daysInMonth;
   const monthProgress = (dayOfMonth / daysInMonth) * 100;
   const isCurrentMonth = month === now.getMonth() + 1 && year === now.getFullYear();
 
+  // ── Core computed values (must be declared before fetchAISuggestions) ──
+  const totalBudget = budgets.reduce((s, b) => s + Number(b.amount), 0);
+  const totalSpent = budgets.reduce((s, b) => s + Number(b.spent), 0);
+  const totalRemaining = totalBudget - totalSpent;
+  const overallPct = totalBudget > 0 ? Math.min(100, (totalSpent / totalBudget) * 100) : 0;
+  const daysLeft = daysInMonth - dayOfMonth;
+  const safeDailySpend = totalRemaining > 0 && daysLeft > 0 ? totalRemaining / daysLeft : 0;
+  const forecastSpend = isCurrentMonth && dayOfMonth > 0 ? (totalSpent / dayOfMonth) * daysInMonth : totalSpent;
+  const forecastOver = forecastSpend > totalBudget;
+
+  const overBudgetList = budgets.filter(b => Number(b.spent) > Number(b.amount));
+  const nearLimitList = budgets.filter(b => { const p = (Number(b.spent) / Number(b.amount)) * 100; return p >= 80 && p < 100; });
+  const underUsedList = budgets.filter(b => (Number(b.spent) / Number(b.amount)) * 100 < 30 && isCurrentMonth && dayOfMonth > 15);
+  const healthScore = Math.max(0, 100 - overBudgetList.length * 20 - nearLimitList.length * 8 - (forecastOver ? 15 : 0));
+
+  const getTrend = (b: Budget) => {
+    const prev = prevBudgets.find(pb => pb.category_id === b.category_id);
+    return prev ? Number(b.spent) - Number(prev.spent) : null;
+  };
+
+  const expenseCategories = categories.filter(c => c.type === 'expense');
+  const recurringTxns = transactions.filter(t => t.is_recurring);
+  const recurringTotal = recurringTxns.reduce((s, t) => s + Number(t.amount), 0);
+  const dailyExpense = (stats?.daily || []).filter(d => d.type === 'expense').map(d => ({ day: Number(d.day), total: Number(d.total) }));
+
+  // ── Data loading ──
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const prevMonth = month === 1 ? 12 : month - 1;
-      const prevYear = month === 1 ? year - 1 : year;
-      const [b, c, t, pb] = await Promise.all([
+      const pm = month === 1 ? 12 : month - 1;
+      const py = month === 1 ? year - 1 : year;
+      const [b, c, t, pb, s] = await Promise.all([
         api.getBudgets({ month: String(month), year: String(year) }),
         api.getCategories(),
-        api.getTransactions({ month: String(month), year: String(year), limit: '500' }).catch(() => ({ transactions: [] })),
-        api.getBudgets({ month: String(prevMonth), year: String(prevYear) }).catch(() => []),
+        api.getTransactions({ month: String(month), year: String(year), limit: '500' }).catch(() => []),
+        api.getBudgets({ month: String(pm), year: String(py) }).catch(() => []),
+        api.getStats({ month: String(month), year: String(year) }).catch(() => null),
       ]);
-      setBudgets(b);
-      setCategories(c);
-      const txns = Array.isArray(t) ? t : (t.transactions || []);
-      setTransactions(txns);
+      setBudgets(Array.isArray(b) ? b : []);
+      setCategories(Array.isArray(c) ? c : []);
+      setTransactions(Array.isArray(t) ? t : (t?.transactions ?? []));
       setPrevBudgets(Array.isArray(pb) ? pb : []);
+      setStats(s);
     } catch { showToast('Failed to load budgets', 'error'); }
     finally { setLoading(false); }
   }, [month, year]);
 
   useEffect(() => { load(); }, [load]);
 
+  // ── Handlers ──
   const handleSave = async () => {
     if (!form.category_id || !form.amount) { showToast('Fill in all fields', 'error'); return; }
     try {
       await api.createBudget({ ...form, amount: Number(form.amount), month, year });
-      showToast('Budget saved');
-      setShowModal(false);
-      load();
+      showToast('Budget saved'); setShowModal(false); load();
     } catch { showToast('Failed to save budget', 'error'); }
   };
 
@@ -134,236 +358,249 @@ export default function BudgetsPage() {
   };
 
   const fetchAISuggestions = async () => {
-    setAiLoading(true);
-    setAiSuggestions('');
+    if (!budgets.length) return;
+    setAiLoading(true); setAiSuggestions('');
     try {
-      const budgetSummary = budgets.map(b => ({
+      const summary = budgets.map(b => ({
         category: translateCategory(b.category_name),
         budget: Number(b.amount),
         spent: Number(b.spent),
         pct: Math.round((Number(b.spent) / Number(b.amount)) * 100),
       }));
-      const totalBudget = budgets.reduce((s, b) => s + Number(b.amount), 0);
-      const totalSpent = budgets.reduce((s, b) => s + Number(b.spent), 0);
+      const prompt = [
+        `${MONTH_FULL[month - 1]} ${year} — ${Math.round(monthProgress)}% through the month.`,
+        `Total budget: ${fmt(totalBudget)} | Spent: ${fmt(totalSpent)} (${overallPct.toFixed(0)}%) | Remaining: ${fmt(totalRemaining)}`,
+        `Safe daily spend for remaining ${daysLeft} days: ${fmt(Math.round(safeDailySpend))}`,
+        `Forecast end-of-month: ${fmt(Math.round(forecastSpend))} (${forecastOver ? 'OVER budget' : 'under budget'})`,
+        '',
+        'Category breakdown:',
+        ...summary.map(b => `- ${b.category}: ${fmt(b.spent)} of ${fmt(b.budget)} (${b.pct}%)`),
+        '',
+        'Give me 3-4 specific, actionable suggestions to stay on budget this month.',
+      ].join('\n');
 
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          system: 'You are a personal finance advisor. Give 3-4 concise, actionable budget suggestions based on the user spending data. Be specific, practical, and encouraging. Use bullet points. Keep each point to 1-2 sentences. Focus on the most impactful changes.',
-          messages: [{
-            role: 'user',
-            content: `Analyze my ${MONTH_FULL[month-1]} ${year} budget:\nTotal budget: ${totalBudget} | Total spent: ${totalSpent} (${Math.round((totalSpent/totalBudget)*100)}% of budget)\nMonth progress: ${Math.round(monthProgress)}% through the month\n\nCategory breakdown:\n${budgetSummary.map(b => `- ${b.category}: ${b.spent} of ${b.budget} (${b.pct}%)`).join('\n')}\n\nGive me 3-4 specific, actionable suggestions to improve my budget management.`
-          }]
-        })
+          max_tokens: 900,
+          system: 'You are a personal finance coach. Give 3-4 concise, actionable budget suggestions based on the exact data provided. Use bullet points starting with "-". Each point is 1-2 sentences. Be specific with amounts and category names. Be direct and encouraging.',
+          messages: [{ role: 'user', content: prompt }],
+        }),
       });
       const data = await response.json();
-      const text = data.content?.[0]?.text || 'Unable to generate suggestions.';
+      const text = data.content?.[0]?.text ?? 'No suggestions available.';
       setAiSuggestions(text);
       setTimeout(() => aiRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
-    } catch {
-      setAiSuggestions('Unable to generate suggestions at this time.');
-    } finally {
-      setAiLoading(false);
-    }
+    } catch (e) {
+      console.error('AI error:', e);
+      setAiSuggestions('Unable to generate suggestions right now. Please try again.');
+    } finally { setAiLoading(false); }
   };
 
-  const expenseCategories = categories.filter(c => c.type === 'expense');
-  const totalBudget = budgets.reduce((s, b) => s + Number(b.amount), 0);
-  const totalSpent = budgets.reduce((s, b) => s + Number(b.spent), 0);
-  const totalRemaining = totalBudget - totalSpent;
-  const overallPct = totalBudget > 0 ? Math.min(100, (totalSpent / totalBudget) * 100) : 0;
-
-  const forecastSpend = isCurrentMonth && dayOfMonth > 0
-    ? (totalSpent / dayOfMonth) * daysInMonth
-    : totalSpent;
-  const forecastOver = forecastSpend > totalBudget;
-
-  const overBudget = budgets.filter(b => Number(b.spent) > Number(b.amount));
-  const nearLimit = budgets.filter(b => {
-    const pct = (Number(b.spent) / Number(b.amount)) * 100;
-    return pct >= 80 && pct < 100;
-  });
-  const underUsed = budgets.filter(b => (Number(b.spent) / Number(b.amount)) * 100 < 30 && isCurrentMonth && dayOfMonth > 15);
-
-  const computeHealth = () => {
-    if (!budgets.length) return 100;
-    let score = 100;
-    budgets.forEach(b => {
-      const pct = (Number(b.spent) / Number(b.amount)) * 100;
-      if (pct > 100) score -= 20;
-      else if (pct > 90) score -= 10;
-      else if (pct > 80) score -= 5;
-    });
-    if (forecastOver) score -= 15;
-    return Math.max(0, score);
-  };
-  const healthScore = computeHealth();
-
-  const recurringTxns = transactions.filter((t: Transaction) => t.is_recurring);
-  const recurringTotal = recurringTxns.reduce((s: number, t: Transaction) => s + Number(t.amount), 0);
-
-  const getTrend = (b: Budget) => {
-    const prev = prevBudgets.find(pb => pb.category_id === b.category_id);
-    if (!prev) return null;
-    return Number(b.spent) - Number(prev.spent);
-  };
-
-  const card: React.CSSProperties = {
-    background: 'var(--surface)', border: '1px solid var(--border)',
-    borderRadius: 16, padding: 20,
-  };
-
-  const tabStyle = (tab: string): React.CSSProperties => ({
+  // ── Style helpers ──
+  const card: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 20 };
+  const tabBtn = (tab: string): React.CSSProperties => ({
     padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
     background: activeTab === tab ? 'var(--accent)' : 'transparent',
     color: activeTab === tab ? 'white' : 'var(--text-muted)',
-    border: 'none', cursor: 'pointer',
-    transition: 'all 0.18s ease',
+    border: 'none', cursor: 'pointer', transition: 'all 0.15s ease',
   });
 
+  const emptyState = !loading && budgets.length === 0;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* Header */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
         <div>
           <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Budgets</h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-            {MONTH_FULL[month-1]} {year} · {Math.round(monthProgress)}% through the month
+            {MONTH_FULL[month - 1]} {year} · Day {dayOfMonth} of {daysInMonth}
+            {isCurrentMonth && daysLeft > 0 && ` · ${daysLeft} days left`}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <select value={month} onChange={e => setMonth(Number(e.target.value))} style={{ width: 96, fontSize: 13 }}>
-            {MONTHS.map((m, i) => <option key={m} value={i+1}>{m}</option>)}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <select value={month} onChange={e => setMonth(Number(e.target.value))} style={{ width: 90, fontSize: 13 }}>
+            {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
           </select>
-          <select value={year} onChange={e => setYear(Number(e.target.value))} style={{ width: 80, fontSize: 13 }}>
-            {[2023,2024,2025,2026].map(y => <option key={y} value={y}>{y}</option>)}
+          <select value={year} onChange={e => setYear(Number(e.target.value))} style={{ width: 78, fontSize: 13 }}>
+            {[2023, 2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
-          <button onClick={() => { setForm({ category_id: '', amount: '' }); setShowModal(true); }}
-            style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)' }}>
+          <button
+            onClick={() => { setForm({ category_id: '', amount: '' }); setShowModal(true); }}
+            style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)', whiteSpace: 'nowrap' }}>
             + Add Budget
           </button>
         </div>
       </div>
 
-      {/* Monthly Overview Cards */}
-      {!loading && budgets.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+      {/* ── Empty State ── */}
+      {emptyState && (
+        <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 320 }}>
+            <div style={{ padding: 40, background: 'var(--surface-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+              <svg width="140" height="140" viewBox="0 0 140 140">
+                <circle cx="70" cy="70" r="50" fill="none" stroke="var(--border-2)" strokeWidth="18" />
+                {[0, 72, 144, 216, 288].map((deg, i) => (
+                  <circle key={i} cx="70" cy="70" r="50" fill="none"
+                    stroke={['#5b6ef5','#22d47a','#f5a623','#f05252','#a78bfa'][i]}
+                    strokeWidth="18"
+                    strokeDasharray={`${55} ${2 * Math.PI * 50}`}
+                    strokeDashoffset={-(2 * Math.PI * 50 * deg / 360)}
+                    opacity="0.2"
+                    style={{ transform: 'rotate(-90deg)', transformOrigin: '70px 70px' }}
+                  />
+                ))}
+                <text x="70" y="66" textAnchor="middle" fontSize="12" fill="var(--text-muted)" fontFamily="var(--font-sans)">No</text>
+                <text x="70" y="82" textAnchor="middle" fontSize="12" fill="var(--text-muted)" fontFamily="var(--font-sans)">budgets</text>
+              </svg>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', maxWidth: 180 }}>
+                Set limits per category to unlock spending insights
+              </div>
+            </div>
+            <div style={{ padding: 40, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 20 }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.03em', marginBottom: 8 }}>Start tracking budgets</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.7 }}>
+                  Set monthly spending limits per category and get live progress bars, forecasts, health scores, and AI-powered suggestions.
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {['📊 Category progress bars & health indicators', '🔮 Month-end spending forecasts', '💡 Insights: over-budget & near-limit alerts', '🤖 AI-powered budget suggestions'].map(item => (
+                  <div key={item} style={{ fontSize: 13, color: 'var(--text-soft)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>{item.split(' ')[0]}</span>
+                    <span>{item.split(' ').slice(1).join(' ')}</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => { setForm({ category_id: '', amount: '' }); setShowModal(true); }}
+                style={{ padding: '12px 24px', borderRadius: 10, fontSize: 14, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.35)', alignSelf: 'flex-start' }}>
+                Create your first budget &rarr;
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Stat Cards ── */}
+      {!loading && !emptyState && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
           {[
             { label: 'Total Budget', value: fmt(totalBudget), sub: `${budgets.length} categories`, color: 'var(--accent)' },
-            { label: 'Total Spent', value: fmt(totalSpent), sub: `${overallPct.toFixed(0)}% used`, color: totalSpent > totalBudget ? 'var(--red)' : 'var(--green)' },
-            { label: 'Remaining', value: fmt(Math.abs(totalRemaining)), sub: totalRemaining >= 0 ? 'available' : 'over budget', color: totalRemaining >= 0 ? 'var(--text)' : 'var(--red)' },
-            { label: 'Forecast', value: fmt(Math.round(forecastSpend)), sub: forecastOver ? '⚠ over budget' : 'projected spend', color: forecastOver ? 'var(--red)' : 'var(--amber)' },
+            { label: 'Total Spent', value: fmt(totalSpent), sub: `${overallPct.toFixed(0)}% of budget`, color: totalSpent > totalBudget ? 'var(--red)' : 'var(--green)' },
+            { label: 'Remaining', value: fmt(Math.abs(totalRemaining)), sub: totalRemaining >= 0 ? 'left to spend' : 'over budget', color: totalRemaining >= 0 ? 'var(--text)' : 'var(--red)' },
+            { label: 'Safe Daily', value: safeDailySpend > 0 ? fmt(Math.round(safeDailySpend)) : '—', sub: daysLeft > 0 ? `per day · ${daysLeft}d left` : 'month ended', color: safeDailySpend > 0 ? 'var(--green)' : 'var(--text-muted)' },
+            { label: 'Forecast', value: fmt(Math.round(forecastSpend)), sub: forecastOver ? 'over budget' : 'projected spend', color: forecastOver ? 'var(--red)' : 'var(--amber)' },
           ].map((item, i) => (
-            <div key={i} style={{ ...card, position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: item.color, opacity: 0.7 }} />
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>{item.label}</div>
-              <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.04em', fontFamily: 'var(--font-mono)', color: item.color, marginBottom: 4 }}>{item.value}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.sub}</div>
+            <div key={i} style={{ ...card, padding: '14px 16px', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: item.color, opacity: 0.8 }} />
+              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6 }}>{item.label}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.03em', fontFamily: 'var(--font-mono)', color: item.color, marginBottom: 3 }}>{item.value}</div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{item.sub}</div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Overall Progress + Forecast */}
-      {!loading && budgets.length > 0 && (
-        <div style={{ ...card }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 14, fontWeight: 600 }}>Overall Budget Usage</span>
-              <HealthDot score={healthScore} />
-            </div>
-            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                {isCurrentMonth ? `Day ${dayOfMonth} of ${daysInMonth}` : `${daysInMonth} days`}
-              </span>
-              <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)',
-                color: overallPct >= 100 ? 'var(--red)' : overallPct >= 80 ? 'var(--amber)' : 'var(--green)' }}>
-                {overallPct.toFixed(1)}%
-              </span>
+      {/* ── Donut + Trend Chart ── */}
+      {!loading && !emptyState && (
+        <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 12 }}>
+          {/* Donut */}
+          <div style={{ ...card, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.03em', textTransform: 'uppercase', alignSelf: 'flex-start' }}>Breakdown</div>
+            <DonutChart budgets={budgets} fmt={fmt} />
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {budgets.slice(0, 6).map(b => {
+                const pct = totalBudget > 0 ? ((Number(b.amount) / totalBudget) * 100).toFixed(0) : '0';
+                return (
+                  <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: 2, background: b.category_color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 11, color: 'var(--text-soft)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{translateCategory(b.category_name)}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{pct}%</span>
+                  </div>
+                );
+              })}
+              {budgets.length > 6 && <div style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center' }}>+{budgets.length - 6} more</div>}
             </div>
           </div>
-          <div style={{ height: 12, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden', position: 'relative', marginBottom: 8 }}>
-            <div style={{
-              height: '100%', borderRadius: 99,
-              width: `${Math.min(overallPct, 100)}%`,
-              background: `linear-gradient(90deg, var(--accent), ${overallPct >= 100 ? 'var(--red)' : overallPct >= 80 ? 'var(--amber)' : 'var(--green)'})`,
-              transition: 'width 1s cubic-bezier(0.34,1.1,0.64,1)',
-              boxShadow: `0 0 12px ${overallPct >= 80 ? 'rgba(240,82,82,0.4)' : 'rgba(91,110,245,0.4)'}`,
-            }} />
-            {isCurrentMonth && (
-              <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${monthProgress}%`, width: 2, background: 'var(--text-muted)', opacity: 0.4 }} />
-            )}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: isCurrentMonth ? 10 : 0 }}>
-            <span>{fmt(totalSpent)} spent</span>
-            {isCurrentMonth && <span style={{ color: 'var(--text-soft)' }}>↑ month: {Math.round(monthProgress)}%</span>}
-            <span>{fmt(totalBudget)} budget</span>
-          </div>
-          {isCurrentMonth && (
-            <div style={{
-              padding: '8px 12px', borderRadius: 8,
-              background: forecastOver ? 'var(--red-muted)' : 'var(--surface-2)',
-              border: `1px solid ${forecastOver ? 'rgba(240,82,82,0.2)' : 'var(--border)'}`,
-              display: 'flex', alignItems: 'center', gap: 8,
-            }}>
-              <span style={{ fontSize: 14 }}>{forecastOver ? '⚠️' : '📊'}</span>
-              <span style={{ fontSize: 12, color: forecastOver ? 'var(--red)' : 'var(--text-soft)' }}>
-                At this rate, projected spend is <strong>{fmt(Math.round(forecastSpend))}</strong>
-                {forecastOver ? ` — ${fmt(Math.round(forecastSpend - totalBudget))} over budget` : ` — ${fmt(Math.round(totalBudget - forecastSpend))} under budget`}
-              </span>
+
+          {/* Right: overall bar + spending trend chart */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Overall progress */}
+            <div style={{ ...card, padding: '16px 20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>Overall Usage</span>
+                  <HealthDot score={healthScore} />
+                </div>
+                <span style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', color: overallPct >= 100 ? 'var(--red)' : overallPct >= 80 ? 'var(--amber)' : 'var(--green)' }}>
+                  {overallPct.toFixed(1)}%
+                </span>
+              </div>
+              <div style={{ height: 14, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden', position: 'relative', marginBottom: 8 }}>
+                <div style={{
+                  height: '100%', borderRadius: 99,
+                  width: `${Math.min(overallPct, 100)}%`,
+                  background: `linear-gradient(90deg, var(--accent), ${overallPct >= 100 ? 'var(--red)' : overallPct >= 80 ? 'var(--amber)' : 'var(--green)'})`,
+                  transition: 'width 1s cubic-bezier(0.34,1.1,0.64,1)',
+                  boxShadow: `0 0 14px ${overallPct >= 80 ? 'rgba(240,82,82,0.35)' : 'rgba(91,110,245,0.35)'}`,
+                }} />
+                {isCurrentMonth && (
+                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${monthProgress}%`, width: 2, background: 'rgba(255,255,255,0.25)' }} title="Month progress" />
+                )}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)' }}>
+                <span>{fmt(totalSpent)} spent</span>
+                {isCurrentMonth && <span style={{ color: 'var(--text-soft)' }}>Month: {Math.round(monthProgress)}% elapsed</span>}
+                <span>{fmt(totalBudget)} budget</span>
+              </div>
             </div>
-          )}
+
+            {/* Spending trend chart */}
+            <div style={{ ...card, padding: '16px 20px', flex: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Spending Trend</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Cumulative daily spend · dashed = forecast</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>Projected</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: forecastOver ? 'var(--red)' : 'var(--green)' }}>
+                    {fmt(Math.round(forecastSpend))}
+                  </div>
+                </div>
+              </div>
+              {dailyExpense.length > 0
+                ? <SpendingTrendChart dailyData={dailyExpense} totalBudget={totalBudget} daysInMonth={daysInMonth} dayOfMonth={dayOfMonth} fmt={fmt} />
+                : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 100, color: 'var(--text-muted)', fontSize: 12 }}>No transaction data for this month yet</div>
+              }
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Tabs */}
-      {!loading && budgets.length > 0 && (
+      {/* ── Tabs ── */}
+      {!loading && !emptyState && (
         <div style={{ display: 'flex', gap: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 4, width: 'fit-content' }}>
-          {(['overview', 'recurring', 'insights', 'trends'] as const).map(tab => (
-            <button key={tab} style={tabStyle(tab)} onClick={() => setActiveTab(tab)}>
-              {tab === 'overview' ? '📋 Overview' : tab === 'recurring' ? '🔄 Recurring' : tab === 'insights' ? '💡 Insights' : '📈 Trends'}
+          {(['overview', 'insights', 'trends', 'recurring'] as const).map(tab => (
+            <button key={tab} style={tabBtn(tab)} onClick={() => setActiveTab(tab)}>
+              {tab === 'overview' ? '📋 Overview' : tab === 'insights' ? '💡 Insights' : tab === 'trends' ? '📈 Trends' : '🔄 Recurring'}
             </button>
           ))}
         </div>
       )}
 
-      {/* Budget Cards / Tabs */}
-      {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} style={{ ...card }}>
-              <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
-                <Skeleton w={36} h={36} r={10} />
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <Skeleton w={120} h={13} /><Skeleton w={80} h={10} />
-                </div>
-              </div>
-              <Skeleton h={8} r={99} />
-              <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between' }}>
-                <Skeleton w={80} h={10} /><Skeleton w={80} h={10} />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : budgets.length === 0 ? (
-        <div style={{ ...card, padding: '64px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-          <div style={{ fontSize: 44, opacity: 0.1 }}>◉</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-soft)' }}>No budgets set</div>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', maxWidth: 280 }}>Set monthly spending limits per category to stay on track</p>
-          <button onClick={() => { setForm({ category_id: '', amount: '' }); setShowModal(true); }}
-            style={{ marginTop: 8, padding: '10px 22px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)' }}>
-            Set your first budget
-          </button>
-        </div>
-      ) : activeTab === 'overview' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
+      {/* ── Tab: OVERVIEW ── */}
+      {!loading && !emptyState && activeTab === 'overview' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
           {budgets.map((b, idx) => {
             const spent = Number(b.spent);
             const budget = Number(b.amount);
-            const pct = Math.min((spent / budget) * 100, 100);
+            const pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
             const over = spent > budget;
             const warn = !over && pct >= 80;
             const barColor = over ? 'var(--red)' : warn ? 'var(--amber)' : b.category_color;
@@ -373,8 +610,7 @@ export default function BudgetsPage() {
             const isExpanded = expandedCard === b.id;
             const dailyAvg = dayOfMonth > 0 ? spent / dayOfMonth : 0;
             const projectedTotal = dailyAvg * daysInMonth;
-            const daysLeft = daysInMonth - dayOfMonth;
-            const dailyBudgetLeft = daysLeft > 0 && remaining > 0 ? remaining / daysLeft : 0;
+            const catDailyBudget = daysLeft > 0 && remaining > 0 ? remaining / daysLeft : 0;
 
             return (
               <div key={b.id}
@@ -382,13 +618,13 @@ export default function BudgetsPage() {
                   background: 'var(--surface)',
                   border: `1px solid ${over ? 'rgba(240,82,82,0.3)' : isExpanded ? 'var(--border-2)' : 'var(--border)'}`,
                   borderRadius: 16, padding: 20,
-                  transition: 'all 0.2s ease', cursor: 'pointer',
+                  transition: 'border-color 0.15s ease', cursor: 'pointer',
                 }}
                 onClick={() => setExpandedCard(isExpanded ? null : b.id)}
-                onMouseEnter={e => !isExpanded && ((e.currentTarget as HTMLElement).style.borderColor = over ? 'rgba(240,82,82,0.4)' : 'var(--border-2)')}
-                onMouseLeave={e => !isExpanded && ((e.currentTarget as HTMLElement).style.borderColor = over ? 'rgba(240,82,82,0.3)' : 'var(--border)')}
+                onMouseEnter={e => { if (!isExpanded) (e.currentTarget as HTMLElement).style.borderColor = over ? 'rgba(240,82,82,0.45)' : 'var(--border-2)'; }}
+                onMouseLeave={e => { if (!isExpanded) (e.currentTarget as HTMLElement).style.borderColor = over ? 'rgba(240,82,82,0.3)' : 'var(--border)'; }}
               >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{
                       width: 38, height: 38, borderRadius: 10,
@@ -399,76 +635,63 @@ export default function BudgetsPage() {
                       {translateCategory(b.category_name)[0]}
                     </div>
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 2 }}>
-                        {translateCategory(b.category_name)}
-                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 3 }}>{translateCategory(b.category_name)}</div>
                       <HealthDot score={healthSc} />
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {trend !== null && (
-                      <span style={{ fontSize: 10, fontWeight: 600, color: trend > 0 ? 'var(--red)' : 'var(--green)' }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: trend > 0 ? 'var(--red)' : 'var(--green)', background: trend > 0 ? 'rgba(240,82,82,0.12)' : 'rgba(34,212,122,0.12)', padding: '2px 5px', borderRadius: 4 }}>
                         {trend > 0 ? '↑' : '↓'} {fmt(Math.abs(trend))}
                       </span>
                     )}
                     <button
                       onClick={e => { e.stopPropagation(); handleDelete(b.id); }}
                       title="Delete"
-                      style={{ width: 26, height: 26, borderRadius: 6, background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                      onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'var(--red-muted)'; el.style.color = 'var(--red)'; el.style.borderColor = 'rgba(240,82,82,0.3)'; }}
-                      onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'var(--surface-2)'; el.style.color = 'var(--text-muted)'; el.style.borderColor = 'var(--border)'; }}>
-                      ×
+                      style={{ width: 26, height: 26, borderRadius: 6, background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                      onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'rgba(240,82,82,0.12)'; el.style.color = 'var(--red)'; }}
+                      onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'var(--surface-2)'; el.style.color = 'var(--text-muted)'; }}>
+                      &times;
                     </button>
                   </div>
                 </div>
 
-                <AnimatedBar pct={pct} color={barColor} delay={idx * 80} />
+                <AnimatedBar pct={pct} color={barColor} delay={idx * 70} />
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 9 }}>
                   <div style={{ fontSize: 12 }}>
                     <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: over ? 'var(--red)' : 'var(--text)' }}>{fmt(spent)}</span>
                     <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>of</span>
                     <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{fmt(budget)}</span>
                   </div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: over ? 'var(--red)' : warn ? 'var(--amber)' : 'var(--green)' }}>
-                    {pct.toFixed(0)}%
-                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: over ? 'var(--red)' : warn ? 'var(--amber)' : 'var(--green)' }}>{pct.toFixed(0)}%</span>
                 </div>
 
-                {over ? (
-                  <div style={{ marginTop: 6, fontSize: 11, color: 'var(--red)', fontWeight: 600 }}>
-                    {fmt(spent - budget)} over budget
-                  </div>
-                ) : (
-                  <div style={{ marginTop: 6, fontSize: 11, color: 'var(--green)' }}>
-                    {fmt(remaining)} remaining · {(100 - pct).toFixed(0)}% left
-                  </div>
-                )}
+                {over
+                  ? <div style={{ marginTop: 5, fontSize: 11, color: 'var(--red)', fontWeight: 600 }}>{fmt(spent - budget)} over budget</div>
+                  : <div style={{ marginTop: 5, fontSize: 11, color: 'var(--green)' }}>{fmt(remaining)} remaining · {(100 - pct).toFixed(0)}% left</div>
+                }
 
                 {isExpanded && (
-                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10 }} onClick={e => e.stopPropagation()}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 10 }}>
                       {[
                         { label: 'Daily Avg', value: fmt(Math.round(dailyAvg)), color: 'var(--text)' },
-                        { label: 'Daily Budget Left', value: dailyBudgetLeft > 0 ? fmt(Math.round(dailyBudgetLeft)) : 'N/A', color: dailyBudgetLeft > 0 ? 'var(--green)' : 'var(--red)' },
-                        { label: 'Projected Total', value: fmt(Math.round(projectedTotal)), color: projectedTotal > budget ? 'var(--red)' : 'var(--text)' },
-                        { label: 'vs Last Month', value: trend === null ? '—' : `${trend > 0 ? '+' : ''}${fmt(trend)}`, color: trend === null ? 'var(--text-muted)' : trend > 0 ? 'var(--red)' : 'var(--green)' },
+                        { label: 'Safe Daily', value: catDailyBudget > 0 ? fmt(Math.round(catDailyBudget)) : 'N/A', color: catDailyBudget > 0 ? 'var(--green)' : 'var(--red)' },
+                        { label: 'Projected', value: fmt(Math.round(projectedTotal)), color: projectedTotal > budget ? 'var(--red)' : 'var(--text)' },
+                        { label: 'vs Prev', value: trend === null ? '—' : `${trend > 0 ? '+' : ''}${fmt(trend)}`, color: trend === null ? 'var(--text-muted)' : trend > 0 ? 'var(--red)' : 'var(--green)' },
                       ].map(item => (
-                        <div key={item.label} style={{ background: 'var(--surface-2)', borderRadius: 8, padding: '10px 12px' }}>
-                          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>{item.label}</div>
-                          <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', color: item.color }}>{item.value}</div>
+                        <div key={item.label} style={{ background: 'var(--surface-2)', borderRadius: 8, padding: '8px 10px' }}>
+                          <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 }}>{item.label}</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: item.color }}>{item.value}</div>
                         </div>
                       ))}
                     </div>
-                    {isCurrentMonth && (
+                    {isCurrentMonth && projectedTotal > 0 && (
                       <div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>Projected vs Budget</div>
-                        <div style={{ height: 6, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', borderRadius: 99, width: `${Math.min((projectedTotal / budget) * 100, 100)}%`, background: projectedTotal > budget ? 'var(--red)' : 'var(--amber)', opacity: 0.8 }} />
-                        </div>
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4, textAlign: 'right' }}>
-                          {fmt(Math.round(projectedTotal))} projected of {fmt(budget)}
-                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>Projected vs budget</div>
+                        <AnimatedBar pct={Math.min((projectedTotal / budget) * 100, 100)} color={projectedTotal > budget ? 'var(--red)' : 'var(--amber)'} height={5} />
+                        <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 3, textAlign: 'right' }}>{fmt(Math.round(projectedTotal))} of {fmt(budget)}</div>
                       </div>
                     )}
                   </div>
@@ -477,256 +700,438 @@ export default function BudgetsPage() {
             );
           })}
         </div>
+      )}
 
-      ) : activeTab === 'recurring' ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ ...card }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Recurring Expenses</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Fixed monthly costs this month</div>
+      {/* ── Tab: INSIGHTS ── */}
+      {!loading && !emptyState && activeTab === 'insights' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+
+          {/* LEFT COLUMN */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+            {/* Safe Daily Spending */}
+            <div style={{
+              ...card,
+              background: safeDailySpend > 0 ? 'linear-gradient(135deg, rgba(34,212,122,0.06) 0%, var(--surface) 60%)' : 'var(--surface)',
+              border: safeDailySpend > 0 ? '1px solid rgba(34,212,122,0.2)' : '1px solid rgba(240,82,82,0.25)',
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+                {safeDailySpend > 0 ? '💚' : '🔴'} Safe Daily Spending
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Monthly Recurring</div>
-                <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>{fmt(recurringTotal)}</div>
+              <div style={{ fontSize: 34, fontWeight: 700, fontFamily: 'var(--font-mono)', letterSpacing: '-0.04em', marginBottom: 6, color: safeDailySpend > 0 ? 'var(--green)' : 'var(--red)' }}>
+                {safeDailySpend > 0 ? fmt(Math.round(safeDailySpend)) : 'Over!'}
               </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: safeDailySpend > 0 && budgets.length > 0 ? 12 : 0, lineHeight: 1.6 }}>
+                {safeDailySpend > 0
+                  ? `Spend up to ${fmt(Math.round(safeDailySpend))} per day for the remaining ${daysLeft} day${daysLeft !== 1 ? 's' : ''} to stay on track.`
+                  : totalRemaining < 0
+                    ? `You're ${fmt(Math.abs(totalRemaining))} over your total budget.`
+                    : 'Month has ended or no days remaining.'}
+              </div>
+              {safeDailySpend > 0 && budgets.filter(b => Number(b.spent) < Number(b.amount)).length > 0 && (
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>Per category</div>
+                  {budgets.filter(b => Number(b.spent) < Number(b.amount)).slice(0, 4).map(b => {
+                    const catRemaining = Number(b.amount) - Number(b.spent);
+                    const catDaily = daysLeft > 0 ? catRemaining / daysLeft : 0;
+                    return (
+                      <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: b.category_color }} />
+                          <span style={{ fontSize: 11, color: 'var(--text-soft)' }}>{translateCategory(b.category_name)}</span>
+                        </div>
+                        <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--green)', fontWeight: 600 }}>
+                          {fmt(Math.round(catDaily))}/day
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            {recurringTxns.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)', fontSize: 13 }}>
-                <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.3 }}>🔄</div>
-                No recurring transactions found this month.<br/>
-                <span style={{ fontSize: 11, marginTop: 6, display: 'block' }}>Mark transactions as recurring on the Transactions page.</span>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {recurringTxns.map((t: Transaction) => (
-                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>{t.description || translateCategory(t.category_name)}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{translateCategory(t.category_name)} · {t.date?.slice(0,10)}</div>
+
+            {/* Over Budget */}
+            {overBudgetList.length > 0 ? (
+              <div style={{ ...card, border: '1px solid rgba(240,82,82,0.25)', background: 'rgba(240,82,82,0.04)' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--red)', marginBottom: 12 }}>
+                  🚨 Over Budget <span style={{ fontWeight: 400, opacity: 0.7 }}>({overBudgetList.length})</span>
+                </div>
+                {overBudgetList.map(b => {
+                  const overAmt = Number(b.spent) - Number(b.amount);
+                  const pct = (Number(b.spent) / Number(b.amount)) * 100;
+                  return (
+                    <div key={b.id} style={{ padding: '10px 0', borderBottom: '1px solid rgba(240,82,82,0.1)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                          <div style={{ width: 7, height: 7, borderRadius: 2, background: b.category_color }} />
+                          <span style={{ fontSize: 13 }}>{translateCategory(b.category_name)}</span>
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--red)' }}>+{fmt(overAmt)}</span>
+                      </div>
+                      <AnimatedBar pct={100} color="var(--red)" />
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>
+                        {pct.toFixed(0)}% · budget was {fmt(Number(b.amount))}
                       </div>
                     </div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--red)' }}>{fmt(Number(t.amount))}</div>
-                  </div>
-                ))}
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ ...card, border: '1px solid rgba(34,212,122,0.15)', background: 'rgba(34,212,122,0.03)', textAlign: 'center', padding: '28px 20px' }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>🎯</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--green)', marginBottom: 4 }}>No overspending!</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>All categories are within their budget.</div>
               </div>
             )}
-          </div>
-          {totalBudget > 0 && (
-            <div style={{ ...card }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Recurring vs Discretionary Budget</div>
-              <div style={{ height: 10, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden', marginBottom: 8 }}>
-                <div style={{ height: '100%', borderRadius: 99, width: `${Math.min((recurringTotal / totalBudget) * 100, 100)}%`, background: 'var(--purple)', transition: 'width 0.9s ease', boxShadow: '0 0 8px rgba(167,139,250,0.4)' }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)' }}>
-                <span>Recurring: {fmt(recurringTotal)} ({((recurringTotal/totalBudget)*100).toFixed(0)}%)</span>
-                <span>Discretionary: {fmt(totalBudget - recurringTotal)}</span>
-              </div>
-            </div>
-          )}
-        </div>
 
-      ) : activeTab === 'insights' ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {overBudget.length > 0 && (
-            <div style={{ ...card, border: '1px solid rgba(240,82,82,0.25)', background: 'rgba(240,82,82,0.04)' }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--red)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                🚨 Over Budget ({overBudget.length})
-              </div>
-              {overBudget.map(b => (
-                <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(240,82,82,0.1)' }}>
-                  <span style={{ fontSize: 13 }}>{translateCategory(b.category_name)}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--red)' }}>+{fmt(Number(b.spent) - Number(b.amount))} over</span>
+            {/* Near Limit */}
+            {nearLimitList.length > 0 && (
+              <div style={{ ...card, border: '1px solid rgba(245,166,35,0.2)', background: 'rgba(245,166,35,0.03)' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--amber)', marginBottom: 12 }}>
+                  ⚠️ Near Limit <span style={{ fontWeight: 400, opacity: 0.7 }}>({nearLimitList.length})</span>
                 </div>
-              ))}
-            </div>
-          )}
-          {nearLimit.length > 0 && (
-            <div style={{ ...card, border: '1px solid rgba(245,166,35,0.2)', background: 'rgba(245,166,35,0.03)' }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--amber)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                ⚠️ Near Limit ({nearLimit.length})
-              </div>
-              {nearLimit.map(b => {
-                const pct = (Number(b.spent) / Number(b.amount)) * 100;
-                return (
-                  <div key={b.id} style={{ padding: '10px 0', borderBottom: '1px solid rgba(245,166,35,0.1)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <span style={{ fontSize: 13 }}>{translateCategory(b.category_name)}</span>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--amber)' }}>{pct.toFixed(0)}%</span>
-                    </div>
-                    <AnimatedBar pct={pct} color="var(--amber)" />
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                      {fmt(Number(b.amount) - Number(b.spent))} remaining
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {underUsed.length > 0 && (
-            <div style={{ ...card, border: '1px solid rgba(34,212,122,0.15)', background: 'rgba(34,212,122,0.03)' }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--green)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                ✅ Under-used Budgets ({underUsed.length})
-              </div>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>These budgets have very low usage past mid-month — consider reallocating.</p>
-              {underUsed.map(b => {
-                const pct = (Number(b.spent) / Number(b.amount)) * 100;
-                return (
-                  <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(34,212,122,0.08)' }}>
-                    <span style={{ fontSize: 13 }}>{translateCategory(b.category_name)}</span>
-                    <span style={{ fontSize: 12, color: 'var(--green)' }}>{pct.toFixed(0)}% used · {fmt(Number(b.amount) - Number(b.spent))} free</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {overBudget.length === 0 && nearLimit.length === 0 && underUsed.length === 0 && (
-            <div style={{ ...card, textAlign: 'center', padding: '48px 24px' }}>
-              <div style={{ fontSize: 36, marginBottom: 12 }}>🎯</div>
-              <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>All Good!</div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>All budgets are on track this month.</div>
-            </div>
-          )}
-
-          {/* AI Suggestions */}
-          <div style={{ ...card }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  🤖 AI Budget Suggestions
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Personalized advice based on your spending</div>
-              </div>
-              <button onClick={fetchAISuggestions} disabled={aiLoading || budgets.length === 0}
-                style={{
-                  padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                  background: aiLoading ? 'var(--surface-2)' : 'var(--accent)',
-                  color: aiLoading ? 'var(--text-muted)' : 'white',
-                  border: 'none', transition: 'all 0.2s ease',
-                  boxShadow: aiLoading ? 'none' : '0 4px 12px rgba(91,110,245,0.3)',
-                }}>
-                {aiLoading ? '⏳ Analyzing...' : '✨ Get Suggestions'}
-              </button>
-            </div>
-            {aiSuggestions ? (
-              <div ref={aiRef} style={{
-                padding: 16, borderRadius: 10,
-                background: 'var(--surface-2)', border: '1px solid var(--border)',
-                fontSize: 13, lineHeight: 1.7, color: 'var(--text-soft)',
-                whiteSpace: 'pre-wrap', animation: 'fadeIn 0.3s ease',
-              }}>
-                {aiSuggestions}
-              </div>
-            ) : !aiLoading ? (
-              <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: 12 }}>
-                Click "Get Suggestions" for AI-powered budget advice
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-      ) : activeTab === 'trends' ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Health Score */}
-          <div style={{ ...card }}>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Budget Health Score</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 16 }}>
-              <div style={{ position: 'relative', width: 80, height: 80, flexShrink: 0 }}>
-                <svg viewBox="0 0 80 80" style={{ transform: 'rotate(-90deg)' }}>
-                  <circle cx="40" cy="40" r="30" fill="none" stroke="var(--surface-2)" strokeWidth="8" />
-                  <circle cx="40" cy="40" r="30" fill="none"
-                    stroke={healthScore >= 80 ? 'var(--green)' : healthScore >= 50 ? 'var(--amber)' : 'var(--red)'}
-                    strokeWidth="8"
-                    strokeDasharray={`${(healthScore / 100) * 188.4} 188.4`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
-                  {healthScore}
-                </div>
-              </div>
-              <div>
-                <HealthDot score={healthScore} />
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.6 }}>
-                  {healthScore >= 80 ? "You're managing your budget well. Keep it up!" : healthScore >= 50 ? "Some categories need attention. Review your spending." : "Multiple budgets are at risk. Take action now."}
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {[
-                { label: 'On track (<80%)', value: budgets.filter(b => (Number(b.spent)/Number(b.amount))*100 < 80).length, color: 'var(--green)' },
-                { label: 'Near limit (80–100%)', value: nearLimit.length, color: 'var(--amber)' },
-                { label: 'Over budget (>100%)', value: overBudget.length, color: 'var(--red)' },
-              ].map(item => (
-                <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1 }}>{item.label}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: item.color }}>{item.value}/{budgets.length}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Category Trends */}
-          <div style={{ ...card }}>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Category Trends</div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>Spending vs last month</div>
-            {budgets.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)', fontSize: 13 }}>No data</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {budgets.map((b, idx) => {
-                  const spent = Number(b.spent);
-                  const budget = Number(b.amount);
-                  const pct = Math.min((spent / budget) * 100, 100);
-                  const trend = getTrend(b);
-                  const barColor = spent > budget ? 'var(--red)' : pct >= 80 ? 'var(--amber)' : b.category_color;
-                  const prevSpent = prevBudgets.find(pb => pb.category_id === b.category_id);
-
+                {nearLimitList.map(b => {
+                  const pct = (Number(b.spent) / Number(b.amount)) * 100;
                   return (
-                    <div key={b.id} style={{ padding: '12px 0', borderBottom: idx < budgets.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 10, height: 10, borderRadius: '50%', background: b.category_color, flexShrink: 0 }} />
-                          <span style={{ fontSize: 13, fontWeight: 500 }}>{translateCategory(b.category_name)}</span>
+                    <div key={b.id} style={{ padding: '9px 0', borderBottom: '1px solid rgba(245,166,35,0.1)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                          <div style={{ width: 7, height: 7, borderRadius: 2, background: b.category_color }} />
+                          <span style={{ fontSize: 12 }}>{translateCategory(b.category_name)}</span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          {trend !== null && (
-                            <span style={{ fontSize: 11, fontWeight: 600, color: trend > 0 ? 'var(--red)' : trend < 0 ? 'var(--green)' : 'var(--text-muted)' }}>
-                              {trend > 0 ? '↑' : trend < 0 ? '↓' : '→'} {fmt(Math.abs(trend))}
-                            </span>
-                          )}
-                          <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{fmt(spent)}</span>
-                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--amber)' }}>{pct.toFixed(0)}%</span>
                       </div>
-                      <AnimatedBar pct={pct} color={barColor} delay={idx * 60} />
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5, fontSize: 10, color: 'var(--text-muted)' }}>
-                        <span>{pct.toFixed(0)}% of {fmt(budget)}</span>
-                        {prevSpent && <span>Prev: {fmt(Number(prevSpent.spent))}</span>}
+                      <AnimatedBar pct={pct} color="var(--amber)" />
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>
+                        {fmt(Number(b.amount) - Number(b.spent))} remaining of {fmt(Number(b.amount))}
                       </div>
                     </div>
                   );
                 })}
               </div>
             )}
+
+            {/* Under-used */}
+            {underUsedList.length > 0 && (
+              <div style={{ ...card, border: '1px solid rgba(34,212,122,0.15)', background: 'rgba(34,212,122,0.03)' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--green)', marginBottom: 4 }}>
+                  ✅ Under-used Budgets
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
+                  Low usage past mid-month — consider reallocating these funds.
+                </div>
+                {underUsedList.map(b => {
+                  const pct = (Number(b.spent) / Number(b.amount)) * 100;
+                  return (
+                    <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid rgba(34,212,122,0.1)' }}>
+                      <span style={{ fontSize: 12 }}>{translateCategory(b.category_name)}</span>
+                      <span style={{ fontSize: 11, color: 'var(--green)' }}>{pct.toFixed(0)}% used · {fmt(Number(b.amount) - Number(b.spent))} free</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT COLUMN */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+            {/* Health Score */}
+            <div style={{ ...card }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>Budget Health Score</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 14 }}>
+                <div style={{ position: 'relative', width: 88, height: 88, flexShrink: 0 }}>
+                  <svg viewBox="0 0 88 88" width="88" height="88">
+                    <circle cx="44" cy="44" r="34" fill="none" stroke="var(--surface-2)" strokeWidth="10" />
+                    <circle cx="44" cy="44" r="34" fill="none"
+                      stroke={healthScore >= 80 ? 'var(--green)' : healthScore >= 50 ? 'var(--amber)' : 'var(--red)'}
+                      strokeWidth="10"
+                      strokeDasharray={`${(healthScore / 100) * 213.6} 213.6`}
+                      strokeLinecap="round"
+                      style={{ transform: 'rotate(-90deg)', transformOrigin: '44px 44px', transition: 'stroke-dasharray 1s ease' }}
+                    />
+                  </svg>
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                    <span style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-mono)', lineHeight: 1 }}>{healthScore}</span>
+                    <span style={{ fontSize: 8, color: 'var(--text-muted)' }}>/ 100</span>
+                  </div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <HealthDot score={healthScore} />
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.6 }}>
+                    {healthScore >= 80 ? "You're managing your budget well. Keep up the great work!" :
+                     healthScore >= 50 ? "A few categories need attention before month end." :
+                     "Multiple budgets are at risk — review your spending now."}
+                  </div>
+                </div>
+              </div>
+              {[
+                { label: 'On track', value: budgets.filter(b => (Number(b.spent) / Number(b.amount)) * 100 < 80).length, color: 'var(--green)', icon: '✅' },
+                { label: 'Near limit (80–100%)', value: nearLimitList.length, color: 'var(--amber)', icon: '⚠️' },
+                { label: 'Over budget', value: overBudgetList.length, color: 'var(--red)', icon: '🚨' },
+              ].map(item => (
+                <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: 'var(--surface-2)', marginBottom: 4 }}>
+                  <span>{item.icon}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1 }}>{item.label}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: item.color, fontFamily: 'var(--font-mono)' }}>{item.value}/{budgets.length}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Forecast alert */}
+            {isCurrentMonth && (
+              <div style={{
+                ...card,
+                border: `1px solid ${forecastOver ? 'rgba(240,82,82,0.25)' : 'rgba(34,212,122,0.15)'}`,
+                background: forecastOver ? 'rgba(240,82,82,0.04)' : 'rgba(34,212,122,0.03)',
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: forecastOver ? 'var(--red)' : 'var(--green)', marginBottom: 8 }}>
+                  {forecastOver ? '📉 Forecast: Over Budget' : '📈 Forecast: On Track'}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                  {[
+                    { label: 'Current spend', value: fmt(totalSpent), color: 'var(--text)' },
+                    { label: 'Projected total', value: fmt(Math.round(forecastSpend)), color: forecastOver ? 'var(--red)' : 'var(--green)' },
+                    { label: 'Budget', value: fmt(totalBudget), color: 'var(--text-muted)' },
+                    { label: forecastOver ? 'Over by' : 'Under by', value: fmt(Math.abs(Math.round(forecastSpend - totalBudget))), color: forecastOver ? 'var(--red)' : 'var(--green)' },
+                  ].map(item => (
+                    <div key={item.label} style={{ background: 'var(--surface-2)', borderRadius: 8, padding: '8px 10px' }}>
+                      <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 }}>{item.label}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: item.color }}>{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                  Based on your daily spend of <strong style={{ color: 'var(--text-soft)' }}>{fmt(Math.round(totalSpent / Math.max(dayOfMonth, 1)))}/day</strong> over the past {dayOfMonth} day{dayOfMonth !== 1 ? 's' : ''}.
+                </div>
+              </div>
+            )}
+
+            {/* AI Suggestions */}
+            <div style={{ ...card }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>🤖 AI Suggestions</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Personalized advice based on your data</div>
+                </div>
+                <button
+                  onClick={fetchAISuggestions}
+                  disabled={aiLoading || budgets.length === 0}
+                  style={{
+                    padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                    background: aiLoading ? 'var(--surface-2)' : 'var(--accent)',
+                    color: aiLoading ? 'var(--text-muted)' : 'white',
+                    border: 'none', cursor: aiLoading ? 'default' : 'pointer',
+                    transition: 'all 0.2s', boxShadow: aiLoading ? 'none' : '0 3px 10px rgba(91,110,245,0.3)',
+                    whiteSpace: 'nowrap',
+                  }}>
+                  {aiLoading ? '⏳ Thinking...' : '✨ Analyze'}
+                </button>
+              </div>
+              {aiSuggestions ? (
+                <div ref={aiRef} style={{
+                  padding: 14, borderRadius: 10,
+                  background: 'var(--surface-2)', border: '1px solid var(--border)',
+                  fontSize: 12, lineHeight: 1.8, color: 'var(--text-soft)',
+                  whiteSpace: 'pre-wrap', animation: 'fadeIn 0.3s ease',
+                }}>
+                  {aiSuggestions}
+                </div>
+              ) : aiLoading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 0' }}>
+                  <Skeleton h={10} /><Skeleton h={10} w="85%" /><Skeleton h={10} w="90%" /><Skeleton h={10} w="75%" />
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)', fontSize: 12 }}>
+                  Click Analyze for personalized budget tips from AI
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      ) : null}
+      )}
 
-      {/* Modal */}
+      {/* ── Tab: TRENDS ── */}
+      {!loading && !emptyState && activeTab === 'trends' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ ...card }}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>6-Month Spending</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 16 }}>Total expenses per month</div>
+            <MonthlyBarChart trendData={stats?.trend ?? []} />
+          </div>
+          <div style={{ ...card }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Category Trends</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Current vs previous month — top bar = now, faint bar = last month</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {budgets.map((b, idx) => {
+                const spent = Number(b.spent);
+                const budget = Number(b.amount);
+                const pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+                const trend = getTrend(b);
+                const barColor = spent > budget ? 'var(--red)' : pct >= 80 ? 'var(--amber)' : b.category_color;
+                const prevSpent = prevBudgets.find(pb => pb.category_id === b.category_id);
+                const prevPct = prevSpent && budget > 0 ? Math.min((Number(prevSpent.spent) / budget) * 100, 100) : 0;
+                const trendPct = prevSpent && Number(prevSpent.spent) > 0 ? ((spent - Number(prevSpent.spent)) / Number(prevSpent.spent)) * 100 : null;
+
+                return (
+                  <div key={b.id} style={{ padding: '12px 0', borderBottom: idx < budgets.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 10, height: 10, borderRadius: 2, background: b.category_color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, fontWeight: 500 }}>{translateCategory(b.category_name)}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        {trend !== null && (
+                          <span style={{ fontSize: 11, fontWeight: 600, color: trend > 0 ? 'var(--red)' : 'var(--green)', background: trend > 0 ? 'rgba(240,82,82,0.12)' : 'rgba(34,212,122,0.12)', padding: '2px 6px', borderRadius: 4 }}>
+                            {trend > 0 ? '↑' : '↓'} {fmt(Math.abs(trend))} {trendPct !== null ? `(${Math.abs(trendPct).toFixed(0)}%)` : ''}
+                          </span>
+                        )}
+                        <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--text-soft)' }}>{fmt(spent)}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <AnimatedBar pct={pct} color={barColor} delay={idx * 50} />
+                      {prevSpent && Number(prevSpent.spent) > 0 && (
+                        <AnimatedBar pct={prevPct} color="var(--border-2)" height={4} delay={idx * 50 + 200} />
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 10, color: 'var(--text-muted)' }}>
+                      <span>{pct.toFixed(0)}% of {fmt(budget)} budget</span>
+                      {prevSpent && <span style={{ opacity: 0.6 }}>prev: {fmt(Number(prevSpent.spent))}</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Tab: RECURRING ── */}
+      {!loading && !emptyState && activeTab === 'recurring' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ ...card }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>Recurring Expenses</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Fixed costs this month</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total</div>
+                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>{fmt(recurringTotal)}</div>
+              </div>
+            </div>
+            {recurringTxns.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <div style={{ fontSize: 36, marginBottom: 8, opacity: 0.2 }}>🔄</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>No recurring transactions found</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', opacity: 0.7 }}>Mark transactions as recurring on the Transactions page</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {recurringTxns.map(t => (
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 11px', background: 'var(--surface-2)', borderRadius: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                      <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 500 }}>{t.description || translateCategory(t.category_name)}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{translateCategory(t.category_name)} · {t.date?.slice(0, 10)}</div>
+                      </div>
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13, color: 'var(--red)' }}>{fmt(Number(t.amount))}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {totalBudget > 0 && (
+              <div style={{ ...card }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Recurring vs Discretionary</div>
+                <div style={{ height: 12, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden', marginBottom: 8 }}>
+                  <div style={{
+                    height: '100%', borderRadius: 99,
+                    width: `${Math.min((recurringTotal / totalBudget) * 100, 100)}%`,
+                    background: 'var(--purple)', transition: 'width 0.9s ease',
+                    boxShadow: '0 0 10px rgba(167,139,250,0.35)',
+                  }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>
+                  <span>Recurring: {fmt(recurringTotal)} ({((recurringTotal / totalBudget) * 100).toFixed(0)}%)</span>
+                  <span>Flexible: {fmt(Math.max(0, totalBudget - recurringTotal))}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {[
+                    { label: 'Fixed costs', value: fmt(recurringTotal), color: 'var(--purple)' },
+                    { label: 'Discretionary', value: fmt(Math.max(0, totalBudget - recurringTotal)), color: 'var(--accent)' },
+                  ].map(item => (
+                    <div key={item.label} style={{ background: 'var(--surface-2)', borderRadius: 8, padding: '10px 12px' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>{item.label}</div>
+                      <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)', color: item.color }}>{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div style={{ ...card, background: 'linear-gradient(135deg, rgba(91,110,245,0.06) 0%, var(--surface) 60%)', border: '1px solid rgba(91,110,245,0.15)' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+                📅 Month Progress
+              </div>
+              <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--accent)', marginBottom: 4 }}>
+                {daysLeft}d left
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 10 }}>
+                {daysLeft > 0 ? `${daysLeft} days remaining. Safe daily: ${fmt(Math.round(safeDailySpend))}.` : 'Month has ended.'}
+              </div>
+              <div style={{ height: 6, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', borderRadius: 99, width: `${monthProgress}%`, background: 'var(--accent)', opacity: 0.6 }} />
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>{Math.round(monthProgress)}% of month elapsed</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Loading Skeletons ── */}
+      {loading && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} style={{ ...card }}>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+                <Skeleton w={36} h={36} r={10} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <Skeleton w={120} h={13} /><Skeleton w={80} h={10} />
+                </div>
+              </div>
+              <Skeleton h={8} r={99} />
+              <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between' }}>
+                <Skeleton w={80} h={10} /><Skeleton w={50} h={10} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Modal ── */}
       {showModal && (
-        <div style={MODAL_STYLE} onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
-          <div style={MODAL_BOX}>
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
+          onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}
+        >
+          <div style={{ width: '100%', maxWidth: 420, borderRadius: 20, background: 'var(--surface)', border: '1px solid var(--border-2)', padding: 28, boxShadow: '0 32px 80px rgba(0,0,0,0.7)', display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.03em' }}>Set Budget</h2>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 20, lineHeight: 1, padding: 4 }}>×</button>
+              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 20, lineHeight: 1, padding: 4, cursor: 'pointer' }}>&times;</button>
             </div>
             <div>
               <label style={LABEL_STYLE}>Category</label>
               <select value={form.category_id} onChange={e => setForm(f => ({ ...f, category_id: e.target.value }))}>
-                <option value="">Select category…</option>
+                <option value="">Select category&hellip;</option>
                 {expenseCategories.map(c => <option key={c.id} value={c.id}>{translateCategory(c.name)}</option>)}
               </select>
             </div>
@@ -735,8 +1140,8 @@ export default function BudgetsPage() {
               <input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0" autoFocus />
             </div>
             <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
-              <button onClick={() => setShowModal(false)} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Cancel</button>
-              <button onClick={handleSave} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)' }}>Save Budget</button>
+              <button onClick={() => setShowModal(false)} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleSave} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)', cursor: 'pointer' }}>Save Budget</button>
             </div>
           </div>
         </div>
