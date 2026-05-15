@@ -164,7 +164,7 @@ export default function ScanPage() {
           <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 3fr', gap: 16 }}>
+        <div className="grid-scan">
           {/* Screenshot Preview */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
             <div style={{ padding: '13px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -283,7 +283,7 @@ export default function ScanPage() {
                   <span style={{ fontSize: 10, fontWeight: 700, color: CONFIDENCE_COLORS[tx.confidence], textTransform: 'uppercase' }}>{tx.confidence}</span>
                   <button onClick={() => removeTx(i)} style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, background: 'var(--red-muted)', color: 'var(--red)', border: '1px solid rgba(240,82,82,0.2)', fontWeight: 600 }}>Remove</button>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr 1fr', gap: 8 }}>
+                <div className="scan-tx-grid" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr 1fr', gap: 8 }}>
                   <div style={{ display: 'flex', background: 'var(--surface-2)', borderRadius: 8, padding: 3, border: '1px solid var(--border)', gap: 3 }}>
                     {(['expense','income'] as const).map(t => (
                       <button key={t} onClick={() => { updateTx(i,'type',t); const c = matchCategory(tx.description); updateTx(i,'category_id', (categories.find(c2 => c2.name===c.category && c2.type===t) || categories.find(c2 => c2.type===t && c2.name==='Other'))?.id ?? null); }} style={{ padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: tx.type===t ? (t==='income'?'var(--green)':'var(--red)') : 'transparent', color: tx.type===t?'white':'var(--text-muted)', border: 'none', whiteSpace: 'nowrap' }}>
@@ -325,7 +325,7 @@ export default function ScanPage() {
 
       {/* Tips */}
       {!imageDataUrl && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
           {[
             { icon: 'screenshot', title: 'Best Screenshot Tips', desc: 'Use the transactions history page. Ensure amounts are clearly visible. Avoid blurry or cropped images.' },
             { icon: 'lock', title: 'Fully Private', desc: 'Tesseract.js runs directly in your browser. Screenshots are never uploaded to any server.' },

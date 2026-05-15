@@ -62,19 +62,19 @@ export default function AuthPage() {
       padding: 20, background: 'var(--bg)', position: 'relative', overflow: 'hidden',
     }}>
       {/* Floating ambient orbs */}
-      <div ref={orbARef} style={{
+      <div ref={orbARef} className="landing-orb" style={{
         position: 'absolute', top: '15%', left: '25%', width: 600, height: 600,
         background: 'radial-gradient(circle, rgba(91,110,245,0.07) 0%, transparent 70%)',
         pointerEvents: 'none',
         animation: 'floatA 10s ease-in-out infinite',
       }} />
-      <div ref={orbBRef} style={{
+      <div ref={orbBRef} className="landing-orb" style={{
         position: 'absolute', bottom: '8%', right: '15%', width: 480, height: 480,
         background: 'radial-gradient(circle, rgba(167,139,250,0.05) 0%, transparent 70%)',
         pointerEvents: 'none',
         animation: 'floatB 14s ease-in-out infinite',
       }} />
-      <div style={{
+      <div className="landing-orb" style={{
         position: 'absolute', top: '55%', left: '55%', width: 300, height: 300,
         background: 'radial-gradient(circle, rgba(34,212,122,0.03) 0%, transparent 70%)',
         pointerEvents: 'none',
@@ -82,7 +82,7 @@ export default function AuthPage() {
       }} />
 
       {/* Parallax grid */}
-      <div ref={gridRef} style={{
+      <div ref={gridRef} className="landing-grid" style={{
         position: 'absolute', inset: '-20px', opacity: 0.028,
         backgroundImage: 'linear-gradient(var(--border-2) 1px, transparent 1px), linear-gradient(90deg, var(--border-2) 1px, transparent 1px)',
         backgroundSize: '48px 48px', pointerEvents: 'none',
