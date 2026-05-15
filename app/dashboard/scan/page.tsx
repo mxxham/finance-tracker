@@ -4,6 +4,8 @@ import { api } from '@/lib/api';
 import { parseOCRText, matchCategory, ParsedTransaction } from '@/lib/parser';
 import { showToast } from '@/components/Toast';
 import { translateCategory } from '@/lib/categories';
+import { sendLocalNotification } from '@/lib/notifications';
+
 
 interface Category { id: number; name: string; color: string; type: string; }
 type ScanStatus = 'idle' | 'loading_ocr' | 'ocr_running' | 'parsing' | 'done' | 'error';
@@ -144,8 +146,33 @@ export default function ScanPage() {
     if (!editedTxs.length) return;
     setSaving(true);
     try {
-      await Promise.all(editedTxs.map(tx => api.createTransaction({ amount: tx.amount, type: tx.type, description: tx.description, date: tx.date, category_id: tx.category_id })));
-      setSaved(true); showToast(`${editedTxs.length} transactions saved!`);
+      const savedTxs = editedTxs;
+      await Promise.all(savedTxs.map(tx => api.createTransaction({ amount: tx.amount, type: tx.type, description: tx.description, date: tx.date, category_id: tx.category_id })));
+      setSaved(true);
+      showToast(`${savedTxs.length} transactions saved!`);
+
+      // After save completes, notify with a compact summary (mobile/local fallback).
+      try {
+        const top = savedTxs.slice(0, 3).map(tx => {
+          const prefix = tx.type === 'income' ? '↑' : '↓';
+          const merchant = tx.description || tx.category_hint || 'Unknown';
+          return `${prefix} ${merchant} ${fmt(tx.amount)}`;
+        });
+        const remaining = savedTxs.length > 3 ? ` +${savedTxs.length - 3} more` : '';
+        sendLocalNotification(
+          'Scan complete — transactions added',
+          `${top.join(' · ')}${remaining}`,
+          {
+            tag: 'ft-scan-result',
+            data: { url: '/dashboard/transactions' },
+            icon: '/icon-192.png',
+            badge: '/icon-72.png',
+          }
+        );
+      } catch {
+        // ignore notification errors
+      }
+
     } catch { showToast('Failed to save transactions', 'error'); }
     finally { setSaving(false); }
   };
