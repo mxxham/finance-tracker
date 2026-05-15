@@ -99,6 +99,8 @@ const SECTIONS = [
   { id: 'appearance',    label: 'Appearance',   iconKey: 'appearance' },
   { id: 'display',       label: 'Display',      iconKey: 'display' },
   { id: 'notifications', label: 'Alerts',       iconKey: 'notifications' },
+  { id: 'permissions',   label: 'Permissions',   iconKey: 'notifications' },
+
   { id: 'password',      label: 'Password',     iconKey: 'password' },
   { id: 'data',          label: 'Data',         iconKey: 'data' },
   { id: 'danger',        label: 'Danger Zone',  iconKey: 'danger' },
@@ -783,10 +785,87 @@ export default function SettingsPage() {
             </Card>
           )}
 
+          {/* ── PERMISSIONS ── */}
+          {active === 'permissions' && (
+            <Card>
+              <SectionTitle icon={SECTION_ICONS.notifications} title="Notifications Permissions" subtitle="Request notification permission and verify push support" />
+
+              {!notifSupported && (
+                <div style={{ padding: '16px', borderRadius: 12, background: 'var(--surface-2)', border: '1px solid var(--border)', marginBottom: 20 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Notifications not supported</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Your browser does not support push notifications.</div>
+                </div>
+              )}
+
+              {notifSupported && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{ padding: '14px 16px', borderRadius: 12, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                    <Label>Permission status</Label>
+                    <div style={{ fontSize: 14, color: 'var(--text)' }}>
+                      Notification.permission: <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{notifPermission}</span>
+                    </div>
+                    <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
+                      {pushSupported ? 'Push supported (service worker + PushManager available).' : 'Push not fully supported (may only show while app is open).'}
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '14px 16px', borderRadius: 12, background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 220 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>Request permission</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                        Opens the browser/iOS/Android permission prompt. After granting, enable notifications in the Alerts tab.
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        setNotifLoading(true);
+                        try {
+                          const perm = await requestPermission();
+                          setNotifPermission(perm);
+
+                          // If granted, also register subscription so alerts can work immediately.
+                          if (perm === 'granted') {
+                            const sub = await subscribeToPush();
+                            if (sub) await savePushSubscription(sub);
+                          }
+                        } catch {
+                          showToast('Permission request failed', 'error');
+                        } finally {
+                          setNotifLoading(false);
+                        }
+                      }}
+                      disabled={notifLoading || !notifSupported}
+                      style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 14px rgba(91,110,245,0.35)', opacity: (notifLoading || !notifSupported) ? 0.6 : 1, whiteSpace: 'nowrap' }}
+                    >
+                      {notifLoading ? 'Requesting…' : 'Request permission'}
+                    </button>
+                  </div>
+
+                  <div style={{ padding: '14px 16px', borderRadius: 12, background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 220 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>Send permission test</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                        Shows a test notification if permission is granted.
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleSendTest}
+                      disabled={notifLoading}
+                      style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--surface-3)', color: 'var(--text)', border: '1px solid var(--border)', opacity: notifLoading ? 0.6 : 1, whiteSpace: 'nowrap' }}
+                    >
+                      Test notification
+                    </button>
+                  </div>
+                </div>
+              )}
+            </Card>
+          )}
+
           {/* ── ALERTS ── */}
           {active === 'notifications' && (
             <Card>
               <SectionTitle icon={SECTION_ICONS.notifications} title="Budget Alerts" subtitle="Get real push notifications when you approach spending limits" />
+
 
               {/* ── Unsupported ── */}
               {!notifSupported && (
