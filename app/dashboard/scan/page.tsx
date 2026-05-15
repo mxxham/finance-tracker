@@ -15,6 +15,27 @@ function normalizeMerchantKey(desc: string) { return merchantName(desc).toLowerC
 const CONFIDENCE_COLORS: Record<string, string> = { high: '#22d47a', medium: '#f5a623', low: '#f05252' };
 const APPS = ['Livin by Mandiri','BCA Mobile','BRImo','GoPay','OVO','DANA','ShopeePay','QRIS'];
 
+const CAMERA_ICON = (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+    <circle cx="12" cy="13" r="4"/>
+  </svg>
+);
+
+const GALLERY_ICON = (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+    <polyline points="21 15 16 10 5 21"/>
+  </svg>
+);
+
+const UPLOAD_ICON = (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+    <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/>
+  </svg>
+);
+
 export default function ScanPage() {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<ScanStatus>('idle');
@@ -31,9 +52,18 @@ export default function ScanPage() {
   const [saved, setSaved] = useState(false);
   const [showRawText, setShowRawText] = useState(false);
   const [duplicates, setDuplicates] = useState<ParsedTransaction[]>([]);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
-  useEffect(() => { api.getCategories().then(setCategories).catch(() => {}); }, []);
+  const fileRef   = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    api.getCategories().then(setCategories).catch(() => {});
+    const check = () => setIsMobile(window.innerWidth < 768 || /Mobi|Android/i.test(navigator.userAgent));
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   const matchCategoryId = useCallback((hint: string, type: 'income' | 'expense'): number | null => {
     return (categories.find(c => c.name === hint && c.type === type) || categories.find(c => c.type === type && c.name === 'Other'))?.id ?? null;
@@ -80,9 +110,7 @@ export default function ScanPage() {
       for (const e of existingTxs as Array<{ description: string; category_id: number | null; type: 'income' | 'expense' }>) {
         if (!e.category_id) continue;
         const key = `${e.type}|${normalizeMerchantKey(e.description)}`;
-        if (!vendorCategoryMap.has(key)) {
-          vendorCategoryMap.set(key, e.category_id);
-        }
+        if (!vendorCategoryMap.has(key)) vendorCategoryMap.set(key, e.category_id);
       }
       const dups: ParsedTransaction[] = [];
       const todayTxs = parsed.transactions.filter(tx => tx.date === today);
@@ -122,172 +150,308 @@ export default function ScanPage() {
     finally { setSaving(false); }
   };
 
-  const reset = () => { setImageDataUrl(null); setStatus('idle'); setEditedTxs([]); setDuplicates([]); setOcrText(''); setError(''); setSaved(false); setProgress(0); };
+  const reset = () => {
+    setImageDataUrl(null); setStatus('idle'); setEditedTxs([]); setDuplicates([]);
+    setOcrText(''); setError(''); setSaved(false); setProgress(0);
+    // Reset file inputs so the same file can be re-selected
+    if (fileRef.current)   fileRef.current.value = '';
+    if (cameraRef.current) cameraRef.current.value = '';
+  };
   const isScanning = ['loading_ocr','ocr_running','parsing'].includes(status);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 960 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 960 }}>
+
+      {/* Header */}
       <div>
         <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Scan Transactions</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 600 }}>
-          Upload a screenshot from any Indonesian banking app. Local OCR reads and categorizes transactions — nothing is sent to any server.
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 560, lineHeight: 1.55 }}>
+          {isMobile
+            ? 'Take a photo of your bank app or upload a screenshot. Local OCR — nothing is sent to any server.'
+            : 'Upload a screenshot from any Indonesian banking app. Local OCR reads and categorizes transactions — nothing is sent to any server.'}
         </p>
       </div>
 
       {/* App badges */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {APPS.map(app => (
           <span key={app} style={{ fontSize: 11, padding: '4px 10px', borderRadius: 99, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)', fontWeight: 500 }}>{app}</span>
         ))}
-        <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 99, background: 'var(--accent-glow)', border: '1px solid rgba(91,110,245,0.25)', color: 'var(--accent-2)', fontWeight: 600, display:'inline-flex', alignItems:'center', gap:4 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>100% local</span>
+        <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 99, background: 'var(--accent-glow)', border: '1px solid rgba(91,110,245,0.25)', color: 'var(--accent-2)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          100% local
+        </span>
       </div>
 
-      {/* Upload or Preview */}
+      {/* ── Upload Zone ── */}
       {!imageDataUrl ? (
-        <div onClick={() => fileRef.current?.click()} onDrop={handleDrop}
-          onDragOver={e => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          style={{
-            position: 'relative', borderRadius: 16, cursor: 'pointer',
-            border: `2px dashed ${dragging ? 'var(--accent)' : 'var(--border-2)'}`,
-            background: dragging ? 'var(--accent-glow)' : 'var(--surface)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            justifyContent: 'center', gap: 16, padding: '80px 40px',
-            transition: 'all 0.2s ease',
-          }}>
-          <div style={{ position: 'absolute', inset: 0, borderRadius: 14, opacity: 0.02, backgroundImage: 'linear-gradient(var(--accent) 1px,transparent 1px),linear-gradient(90deg,var(--accent) 1px,transparent 1px)', backgroundSize: '32px 32px', pointerEvents: 'none' }} />
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--surface-2)', border: '1px solid var(--border-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>↑</div>
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 5 }}>Drop your screenshot here</p>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>or click to browse · JPG, PNG, WEBP</p>
-          </div>
-          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 3fr', gap: 16 }}>
-          {/* Screenshot Preview */}
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
-            <div style={{ padding: '13px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>Screenshot</span>
-              <button onClick={reset} style={{ fontSize: 11, padding: '5px 10px', borderRadius: 7, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Change</button>
-            </div>
-            <div style={{ padding: 12 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={imageDataUrl} alt="preview" style={{ width: '100%', borderRadius: 10, objectFit: 'contain', maxHeight: 520 }} />
-            </div>
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-          {/* Right panel */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {status === 'idle' && (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 28, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center' }}>
-                <div style={{ width: 48, height: 48, borderRadius: 13, background: 'var(--accent-glow)', border: '1px solid rgba(91,110,245,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
-                <div>
-                  <p style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 5 }}>Ready to scan</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Tesseract OCR will read and extract transaction data from your screenshot</p>
-                </div>
-                <button onClick={runScan} style={{ padding: '11px 32px', borderRadius: 11, fontWeight: 700, fontSize: 14, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 20px rgba(91,110,245,0.35)', letterSpacing: '-0.01em' }}>
-                  Start Scan
-                </button>
-              </div>
+          {/* MOBILE: Camera button — shown first, big and prominent */}
+          {isMobile && (
+            <button
+              onClick={() => cameraRef.current?.click()}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+                width: '100%', padding: '20px 16px',
+                borderRadius: 16, border: '2px solid var(--accent)',
+                background: 'var(--accent-glow)', color: 'var(--accent-2)',
+                fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em',
+                transition: 'all 0.18s ease',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(91,110,245,0.18)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--accent-glow)'; }}
+            >
+              {CAMERA_ICON}
+              Take a photo
+            </button>
+          )}
+
+          {/* Gallery / drag-drop zone */}
+          <div
+            onClick={() => fileRef.current?.click()}
+            onDrop={handleDrop}
+            onDragOver={e => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            style={{
+              position: 'relative', borderRadius: 16, cursor: 'pointer',
+              border: `2px dashed ${dragging ? 'var(--accent)' : 'var(--border-2)'}`,
+              background: dragging ? 'var(--accent-glow)' : 'var(--surface)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', gap: 14,
+              padding: isMobile ? '28px 20px' : '64px 40px',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {!isMobile && (
+              <div style={{ position: 'absolute', inset: 0, borderRadius: 14, opacity: 0.02, backgroundImage: 'linear-gradient(var(--accent) 1px,transparent 1px),linear-gradient(90deg,var(--accent) 1px,transparent 1px)', backgroundSize: '32px 32px', pointerEvents: 'none' }} />
             )}
+            <div style={{
+              width: isMobile ? 40 : 52, height: isMobile ? 40 : 52,
+              borderRadius: 13, background: 'var(--surface-2)',
+              border: '1px solid var(--border-2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--text-muted)',
+            }}>
+              {isMobile ? GALLERY_ICON : UPLOAD_ICON}
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: isMobile ? 14 : 15, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 4 }}>
+                {isMobile ? 'Choose from gallery' : 'Drop your screenshot here'}
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                {isMobile ? 'JPG, PNG, WEBP' : 'or click to browse · JPG, PNG, WEBP'}
+              </p>
+            </div>
+          </div>
 
-            {isScanning && (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 28, height: 28, border: '2.5px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+          {/* Mobile: divider hint */}
+          {isMobile && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>or</span>
+              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+            </div>
+          )}
+
+          {/* Hidden inputs */}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleFileChange}
+          />
+          <input
+            ref={cameraRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            style={{ display: 'none' }}
+            onChange={handleFileChange}
+          />
+        </div>
+
+      ) : (
+        /* ── After image selected: preview + controls ── */
+        <div className="scan-layout" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+          {/* On desktop: side-by-side. On mobile: stacked (scan-layout CSS handles this) */}
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 3fr', gap: 14 }}>
+
+            {/* Screenshot preview */}
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>Screenshot</span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {/* Mobile: re-shoot button */}
+                  {isMobile && (
+                    <button
+                      onClick={() => { reset(); setTimeout(() => cameraRef.current?.click(), 50); }}
+                      style={{ fontSize: 11, padding: '5px 10px', borderRadius: 7, background: 'var(--accent-glow)', color: 'var(--accent-2)', border: '1px solid rgba(91,110,245,0.25)', display: 'flex', alignItems: 'center', gap: 5, fontWeight: 600 }}
+                    >
+                      {CAMERA_ICON && <span style={{ display: 'flex', alignItems: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></span>}
+                      Retake
+                    </button>
+                  )}
+                  <button
+                    onClick={reset}
+                    style={{ fontSize: 11, padding: '5px 10px', borderRadius: 7, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                  >
+                    {isMobile ? 'Gallery' : 'Change'}
+                  </button>
+                </div>
+              </div>
+              <div style={{ padding: 12 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imageDataUrl}
+                  alt="preview"
+                  style={{ width: '100%', borderRadius: 10, objectFit: 'contain', maxHeight: isMobile ? 280 : 520 }}
+                />
+              </div>
+            </div>
+
+            {/* Right / bottom panel */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+              {/* Idle — Ready to scan */}
+              {status === 'idle' && (
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: isMobile ? '20px 16px' : 28, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center' }}>
+                  <div style={{ width: 48, height: 48, borderRadius: 13, background: 'var(--accent-glow)', border: '1px solid rgba(91,110,245,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                  </div>
                   <div>
-                    <p style={{ fontSize: 13, fontWeight: 600 }}>Analyzing image…</p>
-                    <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{progressLabel}</p>
+                    <p style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 5 }}>Ready to scan</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                      {isMobile
+                        ? 'OCR will extract transaction data from your photo'
+                        : 'Tesseract OCR will read and extract transaction data from your screenshot'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={runScan}
+                    style={{ padding: '12px 36px', borderRadius: 11, fontWeight: 700, fontSize: 14, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 20px rgba(91,110,245,0.35)', letterSpacing: '-0.01em', width: isMobile ? '100%' : 'auto' }}
+                  >
+                    Start Scan
+                  </button>
+                </div>
+              )}
+
+              {/* Scanning progress */}
+              {isScanning && (
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: isMobile ? '16px' : 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 28, height: 28, border: '2.5px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 600 }}>Analyzing image…</p>
+                      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{progressLabel}</p>
+                    </div>
+                  </div>
+                  <div style={{ height: 5, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: 99, background: 'linear-gradient(90deg, var(--accent), var(--purple))', width: `${progress}%`, transition: 'width 0.4s ease' }} />
+                  </div>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{progress}% · Processing locally in your browser</p>
+                </div>
+              )}
+
+              {/* Done banner */}
+              {status === 'done' && (
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600 }}>
+                      {editedTxs.length === 0 ? 'No transactions found' : `${editedTxs.length} transaction${editedTxs.length > 1 ? 's' : ''} detected`}
+                    </p>
+                    {sourceApp && <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>Source: {sourceApp}</p>}
+                    {notes && <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{notes}</p>}
+                  </div>
+                  <button onClick={runScan} style={{ fontSize: 11, padding: '6px 12px', borderRadius: 8, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>Scan Again</button>
+                </div>
+              )}
+
+              {/* Error */}
+              {error && (
+                <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--red-muted)', border: '1px solid rgba(240,82,82,0.25)', color: 'var(--red)', fontSize: 13 }}>
+                  {error}
+                </div>
+              )}
+
+              {/* Duplicates */}
+              {duplicates.length > 0 && (
+                <div style={{ padding: '14px 16px', borderRadius: 12, background: 'var(--amber-muted)', border: '1px solid rgba(245,166,35,0.25)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--amber)' }}>Duplicates Filtered</span>
+                    <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 5, background: 'rgba(245,166,35,0.2)', color: 'var(--amber)', fontWeight: 700 }}>{duplicates.length} removed</span>
+                  </div>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>Matched existing entries (same merchant + amount + date):</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 120, overflowY: 'auto' }}>
+                    {duplicates.map((tx, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '5px 8px', borderRadius: 6, background: 'var(--surface-2)' }}>
+                        <span style={{ fontWeight: 500 }}>{merchantName(tx.description)}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)' }}>{fmt(tx.amount)}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div style={{ height: 5, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', borderRadius: 99, background: 'linear-gradient(90deg, var(--accent), var(--purple))', width: `${progress}%`, transition: 'width 0.4s ease' }} />
-                </div>
-                <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{progress}% · Processing locally in your browser</p>
-              </div>
-            )}
+              )}
 
-            {status === 'done' && (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              {/* Raw OCR toggle */}
+              {ocrText && (
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 600 }}>
-                    {editedTxs.length === 0 ? 'No transactions found' : `${editedTxs.length} transactions detected`}
-                  </p>
-                  {sourceApp && <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>Source: {sourceApp}</p>}
-                  {notes && <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{notes}</p>}
+                  <button onClick={() => setShowRawText(v => !v)} style={{ fontSize: 11, padding: '6px 12px', borderRadius: 8, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                    {showRawText ? 'Hide' : 'Show'} raw OCR text
+                  </button>
+                  {showRawText && (
+                    <pre style={{ marginTop: 8, fontSize: 11, padding: 12, borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)', overflow: 'auto', maxHeight: 140, fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                      {ocrText}
+                    </pre>
+                  )}
                 </div>
-                <button onClick={runScan} style={{ fontSize: 11, padding: '6px 12px', borderRadius: 8, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Scan Again</button>
-              </div>
-            )}
-
-            {error && (
-              <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--red-muted)', border: '1px solid rgba(240,82,82,0.25)', color: 'var(--red)', fontSize: 13 }}>
-                {error}
-              </div>
-            )}
-
-            {duplicates.length > 0 && (
-              <div style={{ padding: '14px 16px', borderRadius: 12, background: 'var(--amber-muted)', border: '1px solid rgba(245,166,35,0.25)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--amber)' }}>Duplicates Filtered</span>
-                  <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 5, background: 'rgba(245,166,35,0.2)', color: 'var(--amber)', fontWeight: 700 }}>{duplicates.length} removed</span>
-                </div>
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>These matched existing entries (same merchant + amount + type + date):</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 120, overflowY: 'auto' }}>
-                  {duplicates.map((tx, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '5px 8px', borderRadius: 6, background: 'var(--surface-2)' }}>
-                      <span style={{ fontWeight: 500 }}>{merchantName(tx.description)}</span>
-                      <span style={{ fontFamily: 'var(--font-mono)' }}>{fmt(tx.amount)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {ocrText && (
-              <div>
-                <button onClick={() => setShowRawText(v => !v)} style={{ fontSize: 11, padding: '6px 12px', borderRadius: 8, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                  {showRawText ? 'Hide' : 'Show'} raw OCR text
-                </button>
-                {showRawText && (
-                  <pre style={{ marginTop: 8, fontSize: 11, padding: 12, borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)', overflow: 'auto', maxHeight: 140, fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
-                    {ocrText}
-                  </pre>
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Editable transactions */}
+      {/* ── Editable transactions ── */}
       {editedTxs.length > 0 && !saved && (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
-          <div style={{ padding: '16px 22px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <div>
               <h2 style={{ fontSize: 14, fontWeight: 700, letterSpacing: '-0.02em' }}>Review & Edit</h2>
               <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>Verify each transaction before saving</p>
             </div>
-            <button onClick={handleSaveAll} disabled={saving} style={{ padding: '10px 22px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--green)', color: 'white', border: 'none', opacity: saving ? 0.6 : 1, boxShadow: '0 4px 16px rgba(34,212,122,0.3)' }}>
+            <button
+              onClick={handleSaveAll}
+              disabled={saving}
+              style={{ padding: '10px 22px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--green)', color: 'white', border: 'none', opacity: saving ? 0.6 : 1, boxShadow: '0 4px 16px rgba(34,212,122,0.3)', whiteSpace: 'nowrap' }}
+            >
               {saving ? 'Saving…' : `Save All (${editedTxs.length})`}
             </button>
           </div>
           <div>
             {editedTxs.map((tx, i) => (
-              <div key={i} style={{ padding: '16px 22px', borderBottom: i < editedTxs.length-1 ? '1px solid var(--border)' : 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div key={i} style={{ padding: isMobile ? '14px 14px' : '16px 22px', borderBottom: i < editedTxs.length-1 ? '1px solid var(--border)' : 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: CONFIDENCE_COLORS[tx.confidence], flexShrink: 0 }} />
-                  <input value={tx.description} onChange={e => updateTx(i,'description',e.target.value)}
-                    style={{ flex: 1, fontSize: 13, fontWeight: 600, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', borderRadius: 0, padding: '2px 0', color: 'var(--text)' }} />
-                  <span style={{ fontSize: 10, fontWeight: 700, color: CONFIDENCE_COLORS[tx.confidence], textTransform: 'uppercase' }}>{tx.confidence}</span>
-                  <button onClick={() => removeTx(i)} style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, background: 'var(--red-muted)', color: 'var(--red)', border: '1px solid rgba(240,82,82,0.2)', fontWeight: 600 }}>Remove</button>
+                  <input
+                    value={tx.description}
+                    onChange={e => updateTx(i,'description',e.target.value)}
+                    style={{ flex: 1, fontSize: 13, fontWeight: 600, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', borderRadius: 0, padding: '2px 0', color: 'var(--text)', minWidth: 0 }}
+                  />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: CONFIDENCE_COLORS[tx.confidence], textTransform: 'uppercase', flexShrink: 0 }}>{tx.confidence}</span>
+                  <button onClick={() => removeTx(i)} style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, background: 'var(--red-muted)', color: 'var(--red)', border: '1px solid rgba(240,82,82,0.2)', fontWeight: 600, flexShrink: 0 }}>✕</button>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr 1fr', gap: 8 }}>
-                  <div style={{ display: 'flex', background: 'var(--surface-2)', borderRadius: 8, padding: 3, border: '1px solid var(--border)', gap: 3 }}>
+                {/* On mobile: stack fields 2+2, on desktop: single row */}
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'auto 1fr 1fr 1fr', gap: 8 }}>
+                  <div style={{ display: 'flex', background: 'var(--surface-2)', borderRadius: 8, padding: 3, border: '1px solid var(--border)', gap: 3, gridColumn: isMobile ? '1 / -1' : 'auto' }}>
                     {(['expense','income'] as const).map(t => (
-                      <button key={t} onClick={() => { updateTx(i,'type',t); const c = matchCategory(tx.description); updateTx(i,'category_id', (categories.find(c2 => c2.name===c.category && c2.type===t) || categories.find(c2 => c2.type===t && c2.name==='Other'))?.id ?? null); }} style={{ padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: tx.type===t ? (t==='income'?'var(--green)':'var(--red)') : 'transparent', color: tx.type===t?'white':'var(--text-muted)', border: 'none', whiteSpace: 'nowrap' }}>
-                        {t === 'income' ? '↑ In' : '↓ Out'}
+                      <button
+                        key={t}
+                        onClick={() => { updateTx(i,'type',t); const c = matchCategory(tx.description); updateTx(i,'category_id', (categories.find(c2 => c2.name===c.category && c2.type===t) || categories.find(c2 => c2.type===t && c2.name==='Other'))?.id ?? null); }}
+                        style={{ flex: 1, padding: '6px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, background: tx.type===t ? (t==='income'?'var(--green)':'var(--red)') : 'transparent', color: tx.type===t?'white':'var(--text-muted)', border: 'none', whiteSpace: 'nowrap' }}
+                      >
+                        {t === 'income' ? '↑ Income' : '↓ Expense'}
                       </button>
                     ))}
                   </div>
@@ -310,31 +474,52 @@ export default function ScanPage() {
         </div>
       )}
 
-      {/* Success */}
+      {/* ── Success state ── */}
       {saved && (
-        <div style={{ background: 'var(--surface)', border: '1px solid rgba(34,212,122,0.25)', borderRadius: 14, padding: '48px 40px', textAlign: 'center' }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--green-muted)', border: '1px solid rgba(34,212,122,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--green)', margin: '0 auto 20px' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div style={{ background: 'var(--surface)', border: '1px solid rgba(34,212,122,0.25)', borderRadius: 14, padding: isMobile ? '36px 20px' : '48px 40px', textAlign: 'center' }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--green-muted)', border: '1px solid rgba(34,212,122,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--green)', margin: '0 auto 20px' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
           <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.04em', color: 'var(--green)', marginBottom: 8 }}>Saved successfully!</h2>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>{editedTxs.length} transactions added to your financial history</p>
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button onClick={reset} style={{ padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)' }}>Scan Again</button>
             <a href="/dashboard/transactions" style={{ padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>View Transactions →</a>
           </div>
         </div>
       )}
 
-      {/* Tips */}
+      {/* ── Tips ── */}
       {!imageDataUrl && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap: 10 }}>
           {[
-            { icon: 'screenshot', title: 'Best Screenshot Tips', desc: 'Use the transactions history page. Ensure amounts are clearly visible. Avoid blurry or cropped images.' },
-            { icon: 'lock', title: 'Fully Private', desc: 'Tesseract.js runs directly in your browser. Screenshots are never uploaded to any server.' },
-            { icon: 'edit', title: 'Always Editable', desc: 'After scanning, correct categories, amounts, or dates before saving. View raw OCR text if needed.' },
+            {
+              color: 'var(--accent)',
+              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>,
+              title: isMobile ? 'Camera tips' : 'Screenshot tips',
+              desc: isMobile
+                ? 'Hold steady and ensure amounts are fully in frame. Good lighting helps — avoid glare on the screen.'
+                : 'Use the transactions history page. Ensure amounts are clearly visible. Avoid blurry or cropped images.',
+            },
+            {
+              color: 'var(--green)',
+              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>,
+              title: 'Fully private',
+              desc: 'Tesseract.js runs directly in your browser. Your photos are never uploaded to any server.',
+            },
+            {
+              color: 'var(--amber)',
+              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+              title: 'Always editable',
+              desc: 'After scanning, correct categories, amounts, or dates before saving. View raw OCR text if needed.',
+            },
           ].map(tip => (
-            <div key={tip.title} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
-              {tip.icon === 'screenshot' && <div style={{ marginBottom: 10, color: 'var(--accent)' }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="13" y2="15"/></svg></div>}{tip.icon === 'lock' && <div style={{ marginBottom: 10, color: 'var(--green)' }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>}{tip.icon === 'edit' && <div style={{ marginBottom: 10, color: 'var(--amber)' }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>}
-              <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 6 }}>{tip.title}</p>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.55 }}>{tip.desc}</p>
+            <div key={tip.title} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: isMobile ? '14px 16px' : 18, display: 'flex', gap: isMobile ? 12 : 0, flexDirection: isMobile ? 'row' : 'column', alignItems: isMobile ? 'flex-start' : 'flex-start' }}>
+              <div style={{ color: tip.color, flexShrink: 0, marginBottom: isMobile ? 0 : 10 }}>{tip.icon}</div>
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 4 }}>{tip.title}</p>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.55 }}>{tip.desc}</p>
+              </div>
             </div>
           ))}
         </div>
