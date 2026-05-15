@@ -4,6 +4,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
 import ToastContainer from '@/components/Toast';
+import { getPermissionStatus, checkBudgetAlerts } from '@/lib/notifications';
+import { useSettings } from '@/lib/SettingsContext';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -13,6 +15,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const mainRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { if (!loading && !user) router.push('/'); }, [user, loading, router]);
+
+  const { settings } = useSettings();
+
+  // Auto-check budgets on load if notifications are enabled
+  useEffect(() => {
+    if (!user || loading) return;
+    if (getPermissionStatus() !== 'granted') return;
+    if (!settings.budget_alerts) return;
+    const threshold = settings.budget_alert_threshold ?? 80;
+    // Delay slightly so page content loads first
+    const timer = setTimeout(() => {
+      checkBudgetAlerts(threshold).catch(() => {});
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [user, loading, settings.budget_alerts, settings.budget_alert_threshold]);
 
   useEffect(() => {
     if (prevPath.current && prevPath.current !== pathname && mainRef.current) {

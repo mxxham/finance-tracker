@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import { getNotifSupport, getPermissionStatus, requestPermission, subscribeToPush, savePushSubscription, unsubscribeFromPush, sendTestNotification, checkBudgetAlerts, type NotifPermission } from '@/lib/notifications';
 import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '@/lib/SettingsContext';
 import { useAuth } from '@/lib/AuthContext';
@@ -134,6 +135,11 @@ export default function SettingsPage() {
   // Alerts
   const [budgetAlerts, setBudgetAlerts] = useState(true);
   const [alertThreshold, setAlertThreshold] = useState(80);
+  const [notifPermission, setNotifPermission] = useState<NotifPermission>('default');
+  const [notifSupported, setNotifSupported] = useState(false);
+  const [pushSupported, setPushSupported] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [testSent, setTestSent] = useState(false);
 
   // Password
   const [currentPw, setCurrentPw] = useState('');
@@ -146,6 +152,66 @@ export default function SettingsPage() {
 
   // Responsive
   const [isMobile, setIsMobile] = useState(false);
+  // Check notification permission on mount
+  useEffect(() => {
+    const { supported, pushSupported } = getNotifSupport();
+    setNotifSupported(supported);
+    setPushSupported(pushSupported);
+    setNotifPermission(getPermissionStatus());
+  }, []);
+
+  const handleEnableNotifications = async () => {
+    setNotifLoading(true);
+    try {
+      const perm = await requestPermission();
+      setNotifPermission(perm);
+      if (perm === 'granted') {
+        // Register SW subscription
+        const sub = await subscribeToPush();
+        if (sub) await savePushSubscription(sub);
+        // Save to settings
+        await updateSettings({ budget_alerts: true, budget_alert_threshold: alertThreshold });
+        setBudgetAlerts(true);
+        // Fire test notification
+        setTimeout(() => { sendTestNotification(); }, 800);
+      }
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  const handleDisableNotifications = async () => {
+    setNotifLoading(true);
+    try {
+      await unsubscribeFromPush();
+      await updateSettings({ budget_alerts: false, budget_alert_threshold: alertThreshold });
+      setBudgetAlerts(false);
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  const handleSendTest = async () => {
+    setTestSent(false);
+    const ok = await sendTestNotification();
+    if (!ok) {
+      const perm = await requestPermission();
+      setNotifPermission(perm);
+    } else {
+      setTestSent(true);
+      setTimeout(() => setTestSent(false), 3000);
+    }
+  };
+
+  const handleCheckNow = async () => {
+    setNotifLoading(true);
+    try {
+      await checkBudgetAlerts(alertThreshold);
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 640px)');
     setIsMobile(mq.matches);
@@ -720,35 +786,136 @@ export default function SettingsPage() {
           {/* ── ALERTS ── */}
           {active === 'notifications' && (
             <Card>
-              <SectionTitle icon={SECTION_ICONS.notifications} title="Budget Alerts" subtitle="Get notified when you approach spending limits" />
-              <div>
-                <Toggle
-                  checked={budgetAlerts}
-                  onChange={setBudgetAlerts}
-                  label="Budget alerts"
-                  description="Show warnings when spending approaches your budget limits"
-                />
-              </div>
-              <div style={{ marginTop: 20, opacity: budgetAlerts ? 1 : 0.4, transition: 'opacity 0.2s', pointerEvents: budgetAlerts ? 'auto' : 'none' }}>
-                <Label>Alert threshold: {alertThreshold}%</Label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                  <input
-                    type="range" min={50} max={100} step={5} value={alertThreshold}
-                    onChange={e => setAlertThreshold(Number(e.target.value))}
-                    style={{ flex: 1, height: 4, padding: 0, borderRadius: 99, background: 'var(--surface-3)' }}
-                  />
-                  <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: alertThreshold >= 90 ? 'var(--red)' : alertThreshold >= 75 ? 'var(--amber)' : 'var(--green)', minWidth: 42, textAlign: 'right' }}>{alertThreshold}%</div>
+              <SectionTitle icon={SECTION_ICONS.notifications} title="Budget Alerts" subtitle="Get real push notifications when you approach spending limits" />
+
+              {/* ── Unsupported ── */}
+              {!notifSupported && (
+                <div style={{ padding: '16px', borderRadius: 12, background: 'var(--surface-2)', border: '1px solid var(--border)', marginBottom: 20 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Notifications not supported</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Your browser does not support push notifications. Try Chrome or Safari on iOS 16.4+.</div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3,1fr)' : 'repeat(3,1fr)', gap: 8 }}>
-                  {(isMobile
-                    ? [[70,'70%'],[80,'80%'],[90,'90%']]
-                    : [[70,'70% — Early warning'],[80,'80% — Standard'],[90,'90% — Last chance']]
-                  ).map(([v, l]) => (
-                    <button key={v} onClick={() => setAlertThreshold(Number(v))} style={{ padding: '8px', borderRadius: 8, border: 'none', fontSize: 11, fontWeight: 600, background: alertThreshold === Number(v) ? 'var(--accent)' : 'var(--surface-2)', color: alertThreshold === Number(v) ? 'white' : 'var(--text-muted)', transition: 'all 0.15s' }}>{l}</button>
-                  ))}
+              )}
+
+              {/* ── Permission status banner ── */}
+              {notifSupported && (
+                <div style={{ marginBottom: 20 }}>
+                  {/* DENIED */}
+                  {notifPermission === 'denied' && (
+                    <div style={{ padding: '14px 16px', borderRadius: 12, background: 'var(--red-muted)', border: '1px solid rgba(240,82,82,0.25)', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: 18, flexShrink: 0 }}>🚫</span>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--red)', marginBottom: 4 }}>Notifications blocked</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                          You've blocked notifications for this site. To enable them:
+                          <br />• <strong>Chrome Android:</strong> tap the lock icon in the address bar → Notifications → Allow
+                          <br />• <strong>Safari iOS:</strong> Settings → Safari → FinTrack → Allow Notifications
+                          <br />• <strong>Desktop:</strong> Click the lock icon → Site settings → Notifications → Allow
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* DEFAULT — not yet asked */}
+                  {notifPermission === 'default' && (
+                    <div style={{ padding: '16px', borderRadius: 12, background: 'var(--accent-glow)', border: '1px solid rgba(91,110,245,0.2)', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 160 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-2)', marginBottom: 3 }}>Enable push notifications</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                          {pushSupported ? 'Works even when the app is closed — your phone will vibrate.' : 'Shows alerts while the app is open.'}
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleEnableNotifications}
+                        disabled={notifLoading}
+                        style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 14px rgba(91,110,245,0.35)', opacity: notifLoading ? 0.6 : 1, whiteSpace: 'nowrap', flexShrink: 0 }}
+                      >
+                        {notifLoading ? 'Enabling…' : '🔔 Enable'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* GRANTED */}
+                  {notifPermission === 'granted' && (
+                    <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(34,212,122,0.08)', border: '1px solid rgba(34,212,122,0.25)', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 160 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--green)', marginBottom: 3 }}>
+                          ✓ Notifications active {pushSupported ? '· push enabled' : ''}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                          {pushSupported ? "You'll get alerts even when the app is in the background." : "You'll get alerts while the app is open."}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+                        <button
+                          onClick={handleSendTest}
+                          disabled={notifLoading}
+                          style={{ padding: '8px 14px', borderRadius: 9, fontSize: 12, fontWeight: 600, background: testSent ? 'rgba(34,212,122,0.15)' : 'var(--surface-2)', color: testSent ? 'var(--green)' : 'var(--text-muted)', border: '1px solid var(--border)', whiteSpace: 'nowrap' }}
+                        >
+                          {testSent ? '✓ Sent!' : 'Send test'}
+                        </button>
+                        <button
+                          onClick={handleDisableNotifications}
+                          disabled={notifLoading}
+                          style={{ padding: '8px 14px', borderRadius: 9, fontSize: 12, fontWeight: 600, background: 'var(--red-muted)', color: 'var(--red)', border: '1px solid rgba(240,82,82,0.2)', whiteSpace: 'nowrap' }}
+                        >
+                          Disable
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-              <SaveRow onSave={saveAlerts} saving={saving} />
+              )}
+
+              {/* ── Threshold + check now (only when granted) ── */}
+              {notifSupported && notifPermission === 'granted' && (
+                <div style={{ opacity: budgetAlerts ? 1 : 0.45, transition: 'opacity 0.2s', pointerEvents: budgetAlerts ? 'auto' : 'none' }}>
+                  <div style={{ marginBottom: 16 }}>
+                    <Toggle
+                      checked={budgetAlerts}
+                      onChange={v => { setBudgetAlerts(v); updateSettings({ budget_alerts: v }); }}
+                      label="Budget alerts"
+                      description="Send a notification when spending approaches your set threshold"
+                    />
+                  </div>
+
+                  <Label>Alert threshold: {alertThreshold}%</Label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                    <input
+                      type="range" min={50} max={100} step={5} value={alertThreshold}
+                      onChange={e => setAlertThreshold(Number(e.target.value))}
+                      style={{ flex: 1, height: 4, padding: 0, borderRadius: 99, background: 'var(--surface-3)' }}
+                    />
+                    <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: alertThreshold >= 90 ? 'var(--red)' : alertThreshold >= 75 ? 'var(--amber)' : 'var(--green)', minWidth: 42, textAlign: 'right' }}>{alertThreshold}%</div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 20 }}>
+                    {([[70, '70%', 'Early'], [80, '80%', 'Standard'], [90, '90%', 'Last chance']] as [number, string, string][]).map(([v, pct, label]) => (
+                      <button key={v} onClick={() => setAlertThreshold(v)} style={{ padding: '9px 6px', borderRadius: 9, border: 'none', fontSize: 11, fontWeight: 600, background: alertThreshold === v ? 'var(--accent)' : 'var(--surface-2)', color: alertThreshold === v ? 'white' : 'var(--text-muted)', transition: 'all 0.15s', lineHeight: 1.3 }}>
+                        <div>{pct}</div>
+                        {!isMobile && <div style={{ fontSize: 10, opacity: 0.75, fontWeight: 400 }}>{label}</div>}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Check now button */}
+                  <div style={{ padding: '14px 16px', borderRadius: 12, background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Check budgets now</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Manually trigger a check against your current month's budgets</div>
+                    </div>
+                    <button
+                      onClick={handleCheckNow}
+                      disabled={notifLoading}
+                      style={{ padding: '9px 16px', borderRadius: 9, fontSize: 12, fontWeight: 600, background: 'var(--accent-glow)', color: 'var(--accent-2)', border: '1px solid rgba(91,110,245,0.2)', whiteSpace: 'nowrap', opacity: notifLoading ? 0.6 : 1 }}
+                    >
+                      {notifLoading ? 'Checking…' : '⚡ Check now'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {notifSupported && notifPermission === 'granted' && (
+                <SaveRow onSave={saveAlerts} saving={saving} />
+              )}
             </Card>
           )}
 
