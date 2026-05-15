@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { useSettings } from '@/lib/SettingsContext';
 import { showToast } from '@/components/Toast';
+import { sendTestNotification } from '@/lib/notifications';
 
 interface Budget {
   id: number; amount: number; spent: number;
@@ -286,6 +287,20 @@ export default function BudgetsPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'insights' | 'trends' | 'recurring'>('overview');
   const [expandedCard, setExpandedCard] = useState<number | null>(null);
 
+  const [notifLoading, setNotifLoading] = useState(false);
+  const handleSendTest = async () => {
+    setNotifLoading(true);
+    try {
+      const ok = await sendTestNotification();
+      if (!ok) showToast('Notifications not enabled (permission denied or unsupported)', 'error');
+    } catch {
+      showToast('Failed to send test notification', 'error');
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+
   const daysInMonth = new Date(year, month, 0).getDate();
   const dayOfMonth = month === now.getMonth() + 1 && year === now.getFullYear() ? now.getDate() : daysInMonth;
   const monthProgress = (dayOfMonth / daysInMonth) * 100;
@@ -490,13 +505,19 @@ export default function BudgetsPage() {
             )}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <select value={month} onChange={e => setMonth(Number(e.target.value))} style={{ width: 86, fontSize: 13 }}>
             {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
           </select>
           <select value={year} onChange={e => setYear(Number(e.target.value))} style={{ width: 78, fontSize: 13 }}>
             {[2023, 2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
+          <button
+            onClick={handleSendTest}
+            disabled={notifLoading}
+            style={{ padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border)', whiteSpace: 'nowrap', opacity: notifLoading ? 0.6 : 1 }}>
+            {notifLoading ? 'Sending…' : 'Send test'}
+          </button>
           <button
             onClick={() => { setForm({ category_id: '', amount: '' }); setShowModal(true); }}
             style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)', whiteSpace: 'nowrap' }}>
