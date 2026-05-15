@@ -292,12 +292,43 @@ export default function BudgetsPage() {
     setNotifLoading(true);
     try {
       const ok = await sendTestNotification();
-      if (!ok) showToast('Notifications not enabled (permission denied or unsupported)', 'error');
+      if (!ok) {
+        // Debug: determine which condition failed.
+        // This helps distinguish: unsupported vs permission not granted.
+        // (Notification.permission values: 'granted' | 'denied' | 'default')
+        let debug = {} as any;
+        try {
+          const perm = typeof window !== 'undefined' ? (window.Notification?.permission ?? 'unknown') : 'unknown';
+          debug = {
+            supported: !!(typeof window !== 'undefined' && 'Notification' in window),
+            serviceWorker: typeof window !== 'undefined' && 'serviceWorker' in navigator,
+            pushManager: typeof window !== 'undefined' && !!(navigator as any).PushManager,
+            permission: perm,
+            permissionEnum: ok,
+          };
+        } catch (e) {
+          debug = { error: e instanceof Error ? e.message : String(e) };
+        }
+
+        // Visible in DevTools console
+        // eslint-disable-next-line no-console
+        console.log('[Budgets/TestNotification] sendTestNotification() failed debug:', debug);
+
+        const perm = debug.permission;
+        if (perm === 'denied') {
+          showToast('Test failed: permission denied (see console for details)', 'error');
+        } else if (perm === 'default' || perm === 'unknown') {
+          showToast('Test failed: permission not granted yet (see console for details)', 'error');
+        } else {
+          showToast('Test failed: notifications not supported/enabled (see console for details)', 'error');
+        }
+      }
     } catch {
       showToast('Failed to send test notification', 'error');
     } finally {
       setNotifLoading(false);
     }
+
   };
 
 
