@@ -356,11 +356,20 @@ export default function AnalyticsPage() {
       detailModal.type === 'category' ? translateCategory(detailModal.name) :
       detailModal.type === 'group'    ? `${detailModal.name} group` : '';
     const total = modalTxs.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
-    return createPortal(
+return createPortal(
       <>
         <div onClick={() => setDetailModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' }} />
-        <div className="drill-modal" style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', zIndex: 50, width: '100%', maxWidth: 480, maxHeight: '75vh', background: 'var(--surface)', border: '1px solid var(--border-2)', borderRadius: '20px 20px 0 0', boxShadow: '0 -8px 48px rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideInUp 0.22s cubic-bezier(0.34,1.2,0.64,1) both' }}>
+        <div className="drill-modal" style={{
+          position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 50, width: '100%', maxWidth: 480, maxHeight: '75vh',
+          background: 'var(--surface)', border: '1px solid var(--border-2)',
+          borderRadius: '20px 20px 0 0',
+          boxShadow: '0 -8px 48px rgba(0,0,0,0.6)',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          animation: 'slideUpSheet 0.22s cubic-bezier(0.34,1.2,0.64,1) both',
+        }}>
           <div style={{ padding: '12px 20px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border-2)', margin: '0 auto 12px' }} />
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
               <div>
@@ -935,7 +944,7 @@ export default function AnalyticsPage() {
                     zIndex: 50, width: '100%', maxWidth: 480, maxHeight: '75vh',
                     background: 'var(--surface)', border: '1px solid var(--border-2)', borderRadius: '20px 20px 0 0',
                     boxShadow: '0 -8px 48px rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column',
-                    overflow: 'hidden', animation: 'slideInUp 0.22s cubic-bezier(0.34,1.2,0.64,1) both',
+overflow: 'hidden', animation: 'slideUpSheet 0.22s cubic-bezier(0.34,1.2,0.64,1) both',
                   }}>
                     {/* Header */}
                     <div style={{ padding: '12px 20px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
