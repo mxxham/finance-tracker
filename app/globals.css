@@ -615,6 +615,7 @@ button:active:not(:disabled) { transform: scale(0.96) !important; }
     max-height: 80vh !important;
     width: 100% !important;
   }
+
 }
 
 /* Tablet: 2-col for half grids, 1-col for main */
