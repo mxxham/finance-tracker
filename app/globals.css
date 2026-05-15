@@ -284,508 +284,199 @@ button:active:not(:disabled) { transform: scale(0.96) !important; }
 }
 
 .tabular { font-variant-numeric: tabular-nums; }
-/* ============================================================
-   MOBILE RESPONSIVE — added for mobile support
-   ============================================================ */
+/* ============ MOBILE LAYOUT ============ */
 
-/* ---- Mobile bottom nav ---- */
-.mobile-nav {
-  display: none;
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  z-index: 100;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  box-shadow: 0 -4px 24px rgba(0,0,0,0.3);
-}
-
-.mobile-nav-inner {
-  display: flex;
-  align-items: stretch;
-  height: 60px;
-}
-
-.mobile-nav-item {
+/* Dashboard main content area */
+.dashboard-main {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  text-decoration: none;
-  color: var(--text-muted);
-  padding: 8px 4px;
+  margin-left: var(--sidebar-w);
   min-width: 0;
-  transition: color 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-  position: relative;
+  transition: margin-left 0.32s cubic-bezier(0.22,1,0.36,1);
 }
 
-.mobile-nav-item.active {
-  color: var(--accent-2);
+.dashboard-content {
+  padding: 36px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
-.mobile-nav-item.mobile-nav-highlight {
-  color: var(--accent);
+/* ── Tablet (768px – 1023px) ── */
+@media (max-width: 1023px) {
+  :root { --sidebar-w: 60px; }
+  .dashboard-content { padding: 28px 24px; }
 }
 
-.mobile-nav-item.mobile-nav-highlight.active {
-  color: var(--accent-2);
-}
+/* ── Mobile (< 768px) ── */
+@media (max-width: 767px) {
+  :root { --sidebar-w: 0px; }
 
-.mobile-nav-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-}
-
-.mobile-nav-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  line-height: 1;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mobile-nav-item.active::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 20%; right: 20%;
-  height: 2px;
-  background: var(--accent);
-  border-radius: 0 0 2px 2px;
-}
-
-/* ---- Responsive grid classes ---- */
-/* Use these on grid containers instead of inline gridTemplateColumns */
-
-.grid-4 {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-}
-
-.grid-3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-.grid-2 {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-
-.grid-2-tight {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-
-/* Side-by-side with fixed right panel */
-.grid-main-side {
-  display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 12px;
-}
-
-.grid-main-side-sm {
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 12px;
-}
-
-.grid-main-side-xs {
-  display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 12px;
-}
-
-/* Scan page 2-column */
-.grid-scan {
-  display: grid;
-  grid-template-columns: 2fr 3fr;
-  gap: 16px;
-}
-
-/* Budget sidebar */
-.grid-budget-tabs {
-  display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: 12px;
-}
-
-/* ---- Page header that wraps on mobile ---- */
-.page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.page-header-controls {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  flex-shrink: 0;
-}
-
-/* ---- Table wrapper for horizontal scroll ---- */
-.table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  border-radius: 14px;
-}
-
-/* ---- Scroll pills (horizontal scroll row) ---- */
-.scroll-row {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  padding-bottom: 2px;
-}
-.scroll-row::-webkit-scrollbar { display: none; }
-
-/* ============================================================
-   BREAKPOINT: tablet + mobile
-   ============================================================ */
-@media (max-width: 900px) {
-  .grid-main-side    { grid-template-columns: 1fr; }
-  .grid-main-side-sm { grid-template-columns: 1fr; }
-  .grid-main-side-xs { grid-template-columns: 1fr; }
-  .grid-scan         { grid-template-columns: 1fr; }
-  .grid-budget-tabs  { grid-template-columns: 1fr; }
-}
-
-/* ============================================================
-   BREAKPOINT: mobile only (≤768px)
-   ============================================================ */
-@media (max-width: 768px) {
-
-  /* Show mobile nav, hide desktop sidebar */
-  .mobile-nav { display: block; }
-  .desktop-sidebar { display: none !important; }
-
-  /* Main content: remove sidebar margin, add bottom nav clearance */
   .dashboard-main {
     margin-left: 0 !important;
-    padding: 20px 16px calc(60px + env(safe-area-inset-bottom, 0px) + 16px) !important;
-    min-width: 0;
+    padding-top: 56px;   /* top header bar height */
+    padding-bottom: 64px; /* bottom nav height */
   }
 
-  /* Page header wraps on mobile */
+  .dashboard-content {
+    padding: 16px 14px;
+  }
+
+  /* Page headings */
   .page-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
+    margin-bottom: 16px !important;
   }
-
-  .page-header h1 {
-    font-size: 22px !important;
-  }
-
-  .page-header-controls {
-    justify-content: flex-start;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    scrollbar-width: none;
-  }
-  .page-header-controls::-webkit-scrollbar { display: none; }
-
-  /* Grid breakdowns */
-  .grid-4 { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .grid-3 { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .grid-2 { grid-template-columns: 1fr; gap: 10px; }
-  .grid-2-tight { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-
-  /* Inputs: allow natural sizing */
-  input, select {
-    min-width: 0;
-  }
-
-  /* Summary pills: horizontal scroll */
-  .summary-pills {
-    display: flex;
-    gap: 10px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding-bottom: 4px;
-  }
-  .summary-pills::-webkit-scrollbar { display: none; }
-  .summary-pills > * { flex-shrink: 0; }
-
-  /* Modal: full-width on mobile */
-  .modal-box-mobile {
-    margin: 0 !important;
-    border-radius: 20px 20px 0 0 !important;
-    max-height: 90vh !important;
-    overflow-y: auto;
-  }
-
-  /* Transactions table: compact */
-  .tx-table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    border-radius: 14px;
-  }
-
-  /* Hide less important columns on mobile */
-  .col-hide-mobile {
-    display: none !important;
-  }
-
-  /* Heatmap smaller gap */
-  .heatmap-grid {
-    gap: 2px !important;
-  }
-
-  /* Payday card: stack vertically */
-  .payday-flex {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-  }
-}
-
-/* ============================================================
-   BREAKPOINT: small mobile (≤480px)
-   ============================================================ */
-@media (max-width: 480px) {
-  .dashboard-main {
-    padding: 16px 12px calc(60px + env(safe-area-inset-bottom, 0px) + 16px) !important;
-  }
-
-  .grid-4 { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .grid-3 { grid-template-columns: 1fr; }
-  .grid-2 { grid-template-columns: 1fr; }
-
-  .page-header h1 {
+  .page-title {
     font-size: 20px !important;
   }
-}
-
-/* ============================================================
-   MOBILE: Transactions table → card list
-   ============================================================ */
-@media (max-width: 768px) {
-  /* Hide table header on mobile */
-  .tx-table-wrap thead { display: none; }
-
-  /* Each row becomes a card */
-  .tx-table-wrap tbody tr {
-    display: flex !important;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 12px 16px !important;
-    border-bottom: 1px solid var(--border) !important;
-    position: relative;
+  .page-subtitle {
+    font-size: 12px !important;
   }
 
-  /* Date cell — small top-left */
-  .tx-table-wrap td:nth-child(1) {
-    order: 3;
-    padding: 0 !important;
-    font-size: 11px !important;
-    color: var(--text-muted);
-    flex-basis: 100%;
-  }
-
-  /* Description — full width, bold */
-  .tx-table-wrap td:nth-child(2) {
-    order: 1;
-    padding: 0 !important;
-    font-size: 13px !important;
-    font-weight: 600;
-    flex: 1;
-    min-width: 0;
-    max-width: calc(100% - 90px);
-  }
-
-  /* Category badge */
-  .tx-table-wrap td:nth-child(3) {
-    order: 4;
-    padding: 0 !important;
-    flex-basis: auto;
-  }
-
-  /* Type badge — hide on small screens to save space */
-  .tx-table-wrap td:nth-child(4) {
-    display: none !important;
-  }
-
-  /* Amount — top-right */
-  .tx-table-wrap td:nth-child(5) {
-    order: 2;
-    padding: 0 !important;
-    font-size: 14px !important;
-    font-weight: 700;
-    margin-left: auto;
-  }
-
-  /* Edit/Delete buttons */
-  .tx-table-wrap td:nth-child(6) {
-    order: 5;
-    padding: 0 !important;
-    margin-left: auto;
-  }
-
-  /* Remove hover transform on mobile rows */
-  .tx-table-wrap tbody tr:hover {
-    transform: none !important;
-  }
-}
-
-/* ============================================================
-   MOBILE: Budget grids — prevent overflow
-   ============================================================ */
-@media (max-width: 768px) {
-  /* Budget day pickers: 5-col → wrap */
-  .budget-day-grid {
-    grid-template-columns: repeat(5, 1fr) !important;
-    gap: 6px !important;
-  }
-
-  /* Budget category quick-pick: 4-col → 3-col */
-  .budget-cat-grid {
-    grid-template-columns: repeat(3, 1fr) !important;
-  }
-}
-
-@media (max-width: 480px) {
-  .budget-day-grid {
-    grid-template-columns: repeat(7, 1fr) !important;
-    gap: 4px !important;
-  }
-}
-
-/* ============================================================
-   MOBILE: Analytics filter controls
-   ============================================================ */
-@media (max-width: 768px) {
-  .analytics-header-controls {
-    flex-wrap: wrap !important;
-    gap: 8px !important;
-  }
-
-  .analytics-header-controls select,
-  .analytics-header-controls input {
-    width: auto !important;
-    flex: 1;
-    min-width: 100px;
-  }
-
-  /* Scan page: transaction edit grid stacks */
-  .scan-tx-grid {
+  /* Stat/summary card grids */
+  .stats-grid {
     grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
   }
-}
-
-/* ============================================================
-   MOBILE: Login/landing page — prevent orb overflow
-   ============================================================ */
-@media (max-width: 768px) {
-  .landing-orb {
-    display: none !important;
+  .stats-grid-4 {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
   }
 
-  .landing-grid {
-    display: none !important;
-  }
-}
-
-/* ============================================================
-   MOBILE: General overflow guard
-   ============================================================ */
-body {
-  overflow-x: hidden;
-}
-
-@media (max-width: 768px) {
-  /* Prevent any fixed-width element from causing h-scroll */
-  .modal-overlay {
-    padding: 12px !important;
-    align-items: flex-end !important;
+  /* Charts / two-column layouts */
+  .charts-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
   }
 
-  /* Modals slide up from bottom on mobile */
-  .modal-box-enter,
-  .modal-box-exit {
+  /* Full-width overrides */
+  .mobile-full { width: 100% !important; }
+  .mobile-stack { flex-direction: column !important; gap: 10px !important; }
+  .mobile-hide { display: none !important; }
+  .mobile-wrap { flex-wrap: wrap !important; }
+  .mobile-col { flex-direction: column !important; }
+
+  /* Cards get less padding on mobile */
+  .card { border-radius: 12px !important; }
+
+  /* Tables become scrollable */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Input / button sizing */
+  input, select, textarea { font-size: 16px !important; } /* prevent iOS zoom */
+
+  /* Modals fill the bottom sheet style on mobile */
+  .modal-box {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
     border-radius: 20px 20px 0 0 !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
     max-height: 92vh !important;
     overflow-y: auto !important;
-    width: 100% !important;
   }
 
-  /* Scan page */
-  .scan-upload-area {
-    padding: 24px 16px !important;
-  }
+  /* Analytics specific */
+  .analytics-grid { grid-template-columns: 1fr !important; }
 
-  /* Categories page - action buttons stack */
-  .categories-header {
+  /* Transaction filters row */
+  .filters-row {
     flex-direction: column !important;
     align-items: stretch !important;
+    gap: 8px !important;
   }
+  .filters-row > * { width: 100% !important; }
 
-  /* Pagination: fewer page number buttons */
-  .pagination-pages button:not(.pagination-prev):not(.pagination-next) {
-    display: none;
-  }
-  .pagination-pages button.pagination-active,
-  .pagination-pages button.pagination-prev,
-  .pagination-pages button.pagination-next {
-    display: flex !important;
-  }
+  /* Budget cards */
+  .budgets-grid { grid-template-columns: 1fr !important; }
 
-  /* Summary pills: always horizontal scroll */
-  .summary-pills {
-    padding-bottom: 8px !important;
-  }
+  /* Categories grid */
+  .categories-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
 
-  /* Charts: slightly smaller on mobile */
-  .recharts-responsive-container {
-    min-height: 0 !important;
-  }
+  /* Settings layout */
+  .settings-layout { flex-direction: column !important; gap: 12px !important; }
+  .settings-sidebar { width: 100% !important; }
+  .settings-content { width: 100% !important; }
 
-  /* Settings: nav becomes horizontal scroll tabs */
-  .settings-mobile-nav {
-    display: flex !important;
+  /* Scan page */
+  .scan-layout { flex-direction: column !important; }
+
+  /* Hide table columns on mobile */
+  .hide-mobile { display: none !important; }
+
+  /* Small stat cards */
+  .stat-card-value { font-size: 22px !important; }
+  .stat-card-label { font-size: 11px !important; }
+
+  /* Tab bars become scrollable */
+  .tabs-row {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap !important;
     scrollbar-width: none;
-    gap: 4px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 16px;
   }
-  .settings-mobile-nav::-webkit-scrollbar { display: none; }
-  .settings-mobile-nav button {
-    flex-shrink: 0;
-    white-space: nowrap;
-  }
+  .tabs-row::-webkit-scrollbar { display: none; }
+
+  /* Chart containers */
+  .chart-container { min-height: 200px !important; }
+  .chart-container-lg { min-height: 240px !important; }
+
+  /* Action buttons in header */
+  .header-actions { gap: 8px !important; }
+  .header-actions .btn-text { display: none; }
+
+  /* Reduce font sizes */
+  h1 { font-size: 22px !important; }
+  h2 { font-size: 18px !important; }
+  h3 { font-size: 15px !important; }
 }
 
-/* ============================================================
-   MOBILE: Touch targets — minimum 44px
-   ============================================================ */
-@media (max-width: 768px) {
-  button, a, select, input[type="checkbox"] {
-    min-height: 36px;
+/* ── Small mobile (< 400px) ── */
+@media (max-width: 399px) {
+  .dashboard-content { padding: 12px 10px; }
+  .stats-grid { grid-template-columns: 1fr !important; }
+  .categories-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ============ ADDITIONAL MOBILE OVERRIDES ============ */
+
+/* Analytics grid - 2 cols on tablet, 1 col on mobile */
+@media (max-width: 1023px) {
+  .analytics-grid { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 767px) {
+  .analytics-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+  .budgets-grid   { grid-template-columns: 1fr !important; gap: 10px !important; }
+  .scan-layout    { flex-direction: column !important; }
+  .settings-layout { flex-direction: column !important; }
+
+  /* Settings sidebar nav becomes horizontal scroll */
+  .settings-sidebar {
+    width: 100% !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+  .settings-sidebar::-webkit-scrollbar { display: none; }
+
+  /* Charts inside analytics grid get smaller */
+  .analytics-grid .chart-container,
+  .charts-grid .chart-container {
+    min-height: 180px !important;
   }
 
-  /* Inline icon buttons can stay smaller */
-  .icon-btn {
-    min-height: 32px !important;
-    min-width: 32px !important;
+  /* Summary pills scroll horizontally instead of wrapping */
+  .pills-row {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding-bottom: 4px !important;
   }
+  .pills-row::-webkit-scrollbar { display: none; }
+
+  /* Pagination compacts */
+  .pagination-pages { display: none !important; }
 }

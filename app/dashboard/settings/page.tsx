@@ -288,7 +288,7 @@ export default function SettingsPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       {/* Header */}
       <div className="animate-fadeUp" style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Settings</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Settings</h1>
         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Manage your account, preferences, and data</p>
       </div>
 

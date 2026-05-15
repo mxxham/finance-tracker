@@ -400,9 +400,9 @@ export default function AnalyticsPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {DrillModal}
       {/* Header */}
-      <div className="animate-fadeUp" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+      <div className="animate-fadeUp" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Analytics</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Analytics</h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Smart financial insights & trends</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -416,7 +416,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* KPI Cards — staggered */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+      <div className="stats-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
         {loading ? Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className={`animate-fadeUp stagger-${i + 1}`} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 22 }}>
             <Skeleton w={80} h={10} />
@@ -471,7 +471,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Spending Breakdown + Merchant */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 12 }}>
+      <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 12 }}>
         <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
           <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 4 }}>Income vs Expenses</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>Where your money went this month</div>
@@ -648,7 +648,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Daily Spend Bars + Cumulative */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
           <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 4 }}>Daily Spending</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>Expense amount for each day this month</div>
@@ -709,7 +709,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Category Bars + Radar */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 12 }}>
+      <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 12 }}>
         <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
           <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 4 }}>Spending by Category</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>Top categories ranked by expense amount</div>
@@ -781,7 +781,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Waterfall + Savings Trend */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
           <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 4 }}>Income Waterfall</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>How income flows into expenses and net savings</div>
@@ -978,7 +978,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Budget vs Actual + Weekday Pattern */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
           <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 4 }}>Budget vs Actual</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>Side-by-side budget limit and actual spend per category</div>
@@ -1044,7 +1044,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Biggest Transactions + Avg Tx by Category */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
 
         {/* Biggest single transactions */}
         <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
@@ -1174,7 +1174,7 @@ export default function AnalyticsPage() {
       {/* Monthly Summary */}
       <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
         <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 18 }}>Monthly Summary</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+        <div className="stats-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
           {loading ? Array.from({length:4}).map((_,i) => <Skeleton key={i} h={72} r={10}/>) :
             [
               { label: 'Total Income',    value: stats ? fmt(stats.income) : '—',   color: 'var(--green)' },

@@ -477,9 +477,9 @@ export default function BudgetsPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* ── Header ── */}
-      <div className="page-header">
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Budgets</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Budgets</h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
             {MONTH_FULL[month - 1]} {year} · Day {dayOfMonth} of {daysInMonth}
             {isCurrentMonth && daysLeft > 0 && ` · ${daysLeft} days until payday`}
@@ -508,7 +508,7 @@ export default function BudgetsPage() {
       {/* ── Empty State ── */}
       {emptyState && (
         <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', minHeight: 320 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 320 }}>
             <div style={{ padding: 40, background: 'var(--surface-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
               <svg width="140" height="140" viewBox="0 0 140 140">
                 <circle cx="70" cy="70" r="50" fill="none" stroke="var(--border-2)" strokeWidth="18" />
@@ -556,7 +556,7 @@ export default function BudgetsPage() {
 
       {/* ── Stat Cards ── */}
       {!loading && !emptyState && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
           {[
             { label: 'Total Budget', value: fmt(totalBudget), sub: `${budgets.length} categories`, color: 'var(--accent)' },
             { label: 'Total Spent', value: fmt(totalSpent), sub: `${overallPct.toFixed(0)}% of budget`, color: totalSpent > totalBudget ? 'var(--red)' : 'var(--green)' },
@@ -576,7 +576,7 @@ export default function BudgetsPage() {
 
       {/* ── Donut + Trend Chart ── */}
       {!loading && !emptyState && (
-        <div className="grid-budget-tabs">
+        <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 12 }}>
           {/* Donut */}
           <div style={{ ...card, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.03em', textTransform: 'uppercase', alignSelf: 'flex-start' }}>Breakdown</div>
@@ -664,7 +664,7 @@ export default function BudgetsPage() {
 
       {/* ── Tab: OVERVIEW ── */}
       {!loading && !emptyState && activeTab === 'overview' && (
-        <div className="grid-2">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
           {budgets.map((b, idx) => {
             const spent = Number(b.spent);
             const budget = Number(b.amount);
@@ -742,7 +742,7 @@ export default function BudgetsPage() {
 
                 {isExpanded && (
                   <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 6, marginBottom: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 10 }}>
                       {[
                         { label: 'Daily Avg', value: fmt(Math.round(dailyAvg)), color: 'var(--text)' },
                         { label: 'Safe Daily', value: catDailyBudget > 0 ? fmt(Math.round(catDailyBudget)) : 'N/A', color: catDailyBudget > 0 ? 'var(--green)' : 'var(--red)' },
@@ -772,7 +772,7 @@ export default function BudgetsPage() {
 
       {/* ── Tab: INSIGHTS ── */}
       {!loading && !emptyState && activeTab === 'insights' && (
-        <div className="grid-2">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
 
           {/* LEFT COLUMN */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1083,7 +1083,7 @@ export default function BudgetsPage() {
 
       {/* ── Tab: RECURRING ── */}
       {!loading && !emptyState && activeTab === 'recurring' && (
-        <div className="grid-2">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div style={{ ...card }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div>
@@ -1169,7 +1169,7 @@ export default function BudgetsPage() {
 
       {/* ── Loading Skeletons ── */}
       {loading && (
-        <div className="grid-2">
+        <div className="budgets-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} style={{ ...card }}>
               <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>

@@ -27,16 +27,17 @@ const LABEL_STYLE: React.CSSProperties = {
 
 const MODAL_STYLE: React.CSSProperties = {
   position: 'fixed', inset: 0, zIndex: 50,
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  padding: 20, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)',
+  display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+  padding: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)',
   animation: 'fadeIn 0.15s ease both',
 };
 const MODAL_BOX: React.CSSProperties = {
-  width: '100%', maxWidth: 460, borderRadius: 20,
+  width: '100%', maxWidth: 500,
+  borderRadius: '20px 20px 0 0',
   background: 'var(--surface)', border: '1px solid var(--border-2)',
-  padding: 28, boxShadow: '0 32px 80px rgba(0,0,0,0.7)',
+  padding: '20px 20px 32px', boxShadow: '0 -8px 48px rgba(0,0,0,0.7)',
   animation: 'scaleIn 0.2s cubic-bezier(0.34,1.2,0.64,1) both',
-  display: 'flex', flexDirection: 'column', gap: 16,
+  display: 'flex', flexDirection: 'column', gap: 14,
 };
 
 export default function TransactionsPage() {
@@ -148,42 +149,42 @@ export default function TransactionsPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Transactions</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h1 className="page-title" style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Transactions</h1>
+          <p className="page-subtitle" style={{ fontSize: 13, color: 'var(--text-muted)' }}>
             {filtered.length} entries
-            <span style={{ fontSize: 11, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', color: 'var(--text-muted)' }}>
-              Press <kbd style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text)' }}>N</kbd> to add
-            </span>
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          {/* Search */}
-          <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: 'var(--text-muted)', pointerEvents: 'none' }}>⌕</span>
-            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search…"
-              style={{ paddingLeft: 30, width: 168, fontSize: 13 }} />
-          </div>
-          <select value={filterType} onChange={e => setFilterType(e.target.value)} style={{ width: 110, fontSize: 13 }}>
-            <option value="">All Types</option>
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
-          </select>
-          <select value={month} onChange={e => setMonth(Number(e.target.value))} style={{ width: 96, fontSize: 13 }}>
-            {MONTHS.map((m, i) => <option key={m} value={i+1}>{m}</option>)}
-          </select>
-          <select value={year} onChange={e => setYear(Number(e.target.value))} style={{ width: 80, fontSize: 13 }}>
-            {[2023,2024,2025,2026].map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
-          <button onClick={exportCSV} style={{ padding: '10px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-soft)', border: '1px solid var(--border-2)' }}>↓ CSV</button>
-          <button onClick={openAdd} style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)' }}>+ Add</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button onClick={exportCSV} style={{ padding: '10px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-soft)', border: '1px solid var(--border-2)' }}>↓ CSV</button>
+          <button onClick={openAdd} style={{ padding: '10px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)' }}>+ Add</button>
         </div>
+      </div>
+
+      {/* Filters row - stacks on mobile */}
+      <div className="filters-row" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: '1 1 150px', minWidth: 120 }}>
+          <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: 'var(--text-muted)', pointerEvents: 'none' }}>⌕</span>
+          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search…"
+            style={{ paddingLeft: 30, width: '100%', fontSize: 13 }} />
+        </div>
+        <select value={filterType} onChange={e => setFilterType(e.target.value)} style={{ flex: '1 1 100px', fontSize: 13 }}>
+          <option value="">All Types</option>
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
+        </select>
+        <select value={month} onChange={e => setMonth(Number(e.target.value))} style={{ flex: '1 1 80px', fontSize: 13 }}>
+          {MONTHS.map((m, i) => <option key={m} value={i+1}>{m}</option>)}
+        </select>
+        <select value={year} onChange={e => setYear(Number(e.target.value))} style={{ flex: '0 0 76px', fontSize: 13 }}>
+          {[2023,2024,2025,2026].map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
       </div>
 
       {/* Summary Pills */}
       {!loading && filtered.length > 0 && (
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {[
             { label: 'Total Income', val: totals.income, color: 'var(--green)', bg: 'var(--green-muted)', border: 'rgba(34,212,122,0.2)' },
             { label: 'Total Expenses', val: totals.expenses, color: 'var(--red)', bg: 'var(--red-muted)', border: 'rgba(240,82,82,0.2)' },
@@ -199,8 +200,8 @@ export default function TransactionsPage() {
       )}
 
       {/* Table */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div className="table-wrap" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border)' }}>
               {['Date','Description','Category','Type','Amount',''].map((h, i) => (
@@ -296,6 +297,7 @@ export default function TransactionsPage() {
       {showModal && (
         <div style={MODAL_STYLE} onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
           <div style={MODAL_BOX}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border-2)', margin: '0 auto 4px' }} />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.03em' }}>{editTx ? 'Edit Transaction' : 'New Transaction'}</h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 20, lineHeight: 1, padding: 4 }}>×</button>

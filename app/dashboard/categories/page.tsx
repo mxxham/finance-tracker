@@ -55,7 +55,7 @@ export default function CategoriesPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Categories</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Categories</h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{categories.length} categories</p>
         </div>
         <button onClick={openAdd} style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)' }}>
@@ -72,7 +72,7 @@ export default function CategoriesPage() {
               <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
               <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{cats.length} categories</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+            <div className="categories-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
               {loading ? Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Skeleton w={38} h={38} r={10} />
