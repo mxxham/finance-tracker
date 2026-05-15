@@ -480,3 +480,56 @@ button:active:not(:disabled) { transform: scale(0.96) !important; }
   /* Pagination compacts */
   .pagination-pages { display: none !important; }
 }
+
+/* ============ BUDGETS PAGE MOBILE ============ */
+
+/* Stat cards: horizontal scroll on tiny screens */
+@media (max-width: 767px) {
+  .stats-scroll {
+    grid-template-columns: repeat(5, minmax(110px, 1fr)) !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding-bottom: 4px !important;
+  }
+  .stats-scroll::-webkit-scrollbar { display: none; }
+
+  /* Donut + right column: stack vertically */
+  .budgets-viz-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Budget cards: 1 column */
+  .budget-cards-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Expanded mini stats: 2 columns instead of 4 */
+  .expanded-mini-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Insights + Recurring tabs: stack */
+  .insights-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Donut chart — center and shrink slightly */
+  .budgets-viz-grid svg[width="180"] {
+    width: 160px !important;
+    height: 160px !important;
+  }
+}
+
+/* Tablet: 2-col stat cards, keep side-by-side */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .stats-scroll {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+  .budget-cards-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .budgets-viz-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

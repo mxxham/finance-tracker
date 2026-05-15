@@ -477,21 +477,21 @@ export default function BudgetsPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Budgets</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
             {MONTH_FULL[month - 1]} {year} · Day {dayOfMonth} of {daysInMonth}
-            {isCurrentMonth && daysLeft > 0 && ` · ${daysLeft} days until payday`}
+            {isCurrentMonth && daysLeft > 0 && ` · ${daysLeft}d to payday`}
             {isCurrentMonth && nextPayday && (
-              <span style={{ marginLeft: 6, color: 'var(--accent)', fontWeight: 600 }}>
-                (next payday: {nextPayday.getDate()}/{nextPayday.getMonth() + 1})
+              <span style={{ marginLeft: 4, color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                (next: {nextPayday.getDate()}/{nextPayday.getMonth() + 1})
               </span>
             )}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <select value={month} onChange={e => setMonth(Number(e.target.value))} style={{ width: 90, fontSize: 13 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          <select value={month} onChange={e => setMonth(Number(e.target.value))} style={{ width: 86, fontSize: 13 }}>
             {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
           </select>
           <select value={year} onChange={e => setYear(Number(e.target.value))} style={{ width: 78, fontSize: 13 }}>
@@ -556,7 +556,7 @@ export default function BudgetsPage() {
 
       {/* ── Stat Cards ── */}
       {!loading && !emptyState && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(120px, 1fr))', gap: 8, overflowX: 'auto' }} className="stats-scroll">
           {[
             { label: 'Total Budget', value: fmt(totalBudget), sub: `${budgets.length} categories`, color: 'var(--accent)' },
             { label: 'Total Spent', value: fmt(totalSpent), sub: `${overallPct.toFixed(0)}% of budget`, color: totalSpent > totalBudget ? 'var(--red)' : 'var(--green)' },
@@ -576,7 +576,7 @@ export default function BudgetsPage() {
 
       {/* ── Donut + Trend Chart ── */}
       {!loading && !emptyState && (
-        <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 12 }}>
+        <div className="budgets-viz-grid" style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 12 }}>
           {/* Donut */}
           <div style={{ ...card, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.03em', textTransform: 'uppercase', alignSelf: 'flex-start' }}>Breakdown</div>
@@ -621,7 +621,7 @@ export default function BudgetsPage() {
                   <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${monthProgress}%`, width: 2, background: 'rgba(255,255,255,0.25)' }} title="Month progress" />
                 )}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', flexWrap: 'wrap', gap: 4 }}>
                 <span>{fmt(totalSpent)} spent</span>
                 {isCurrentMonth && <span style={{ color: 'var(--text-soft)' }}>Month: {Math.round(monthProgress)}% elapsed</span>}
                 <span>{fmt(totalBudget)} budget</span>
@@ -653,7 +653,7 @@ export default function BudgetsPage() {
 
       {/* ── Tabs ── */}
       {!loading && !emptyState && (
-        <div style={{ display: 'flex', gap: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 4, width: 'fit-content' }}>
+        <div className="tabs-row" style={{ display: 'flex', gap: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 4, width: 'fit-content', maxWidth: '100%' }}>
           {(['overview', 'insights', 'trends', 'recurring'] as const).map(tab => (
             <button key={tab} style={tabBtn(tab)} onClick={() => setActiveTab(tab)}>
               {tab === 'overview' ? 'Overview' : tab === 'insights' ? 'Insights' : tab === 'trends' ? 'Trends' : 'Recurring'}
@@ -664,7 +664,7 @@ export default function BudgetsPage() {
 
       {/* ── Tab: OVERVIEW ── */}
       {!loading && !emptyState && activeTab === 'overview' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+        <div className="budget-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
           {budgets.map((b, idx) => {
             const spent = Number(b.spent);
             const budget = Number(b.amount);
@@ -742,7 +742,7 @@ export default function BudgetsPage() {
 
                 {isExpanded && (
                   <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 10 }}>
+                    <div className="expanded-mini-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 10 }}>
                       {[
                         { label: 'Daily Avg', value: fmt(Math.round(dailyAvg)), color: 'var(--text)' },
                         { label: 'Safe Daily', value: catDailyBudget > 0 ? fmt(Math.round(catDailyBudget)) : 'N/A', color: catDailyBudget > 0 ? 'var(--green)' : 'var(--red)' },
@@ -772,7 +772,7 @@ export default function BudgetsPage() {
 
       {/* ── Tab: INSIGHTS ── */}
       {!loading && !emptyState && activeTab === 'insights' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="insights-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
 
           {/* LEFT COLUMN */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1083,7 +1083,7 @@ export default function BudgetsPage() {
 
       {/* ── Tab: RECURRING ── */}
       {!loading && !emptyState && activeTab === 'recurring' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="insights-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div style={{ ...card }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div>
@@ -1190,10 +1190,11 @@ export default function BudgetsPage() {
       {/* ── Modal ── */}
       {showModal && (
         <div
-          style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
+          style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
           onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}
         >
-          <div style={{ width: '100%', maxWidth: 420, borderRadius: 20, background: 'var(--surface)', border: '1px solid var(--border-2)', padding: 28, boxShadow: '0 32px 80px rgba(0,0,0,0.7)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ width: '100%', maxWidth: 480, borderRadius: '20px 20px 0 0', background: 'var(--surface)', border: '1px solid var(--border-2)', padding: '20px 20px 36px', boxShadow: '0 -8px 48px rgba(0,0,0,0.7)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border-2)', margin: '0 auto 4px' }} />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.03em' }}>Set Budget</h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 20, lineHeight: 1, padding: 4, cursor: 'pointer' }}>&times;</button>
