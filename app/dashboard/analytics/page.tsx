@@ -930,7 +930,7 @@ export default function AnalyticsPage() {
                   {/* Backdrop */}
                   <div onClick={() => setSelectedDay(null)} style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)' }} />
                   {/* Modal */}
-                  <div style={{
+                  <div className="drill-modal" style={{
                     position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
                     zIndex: 50, width: '100%', maxWidth: 480, maxHeight: '75vh',
                     background: 'var(--surface)', border: '1px solid var(--border-2)', borderRadius: '20px 20px 0 0',
