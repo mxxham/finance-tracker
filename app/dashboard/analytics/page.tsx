@@ -359,11 +359,12 @@ export default function AnalyticsPage() {
     return createPortal(
       <>
         <div onClick={() => setDetailModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' }} />
-        <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 50, width: 420, maxWidth: 'calc(100vw - 32px)', maxHeight: '72vh', background: 'var(--surface)', border: '1px solid var(--border-2)', borderRadius: 16, boxShadow: '0 24px 64px rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'fadeUp 0.18s ease' }}>
-          <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+        <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', zIndex: 50, width: '100%', maxWidth: 480, maxHeight: '75vh', background: 'var(--surface)', border: '1px solid var(--border-2)', borderRadius: '20px 20px 0 0', boxShadow: '0 -8px 48px rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideInUp 0.22s cubic-bezier(0.34,1.2,0.64,1) both' }}>
+          <div style={{ padding: '12px 20px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border-2)', margin: '0 auto 12px' }} />
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 320 }}>{title}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 280 }}>{title}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
                   {modalTxs.length} transaction{modalTxs.length !== 1 ? 's' : ''}
                   {total > 0 && <> · <span style={{ color: 'var(--red)' }}>{fmt(total)} total</span></>}
@@ -416,7 +417,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* KPI Cards — staggered */}
-      <div className="stats-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+      <div className="an-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
         {loading ? Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className={`animate-fadeUp stagger-${i + 1}`} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 22 }}>
             <Skeleton w={80} h={10} />
@@ -451,7 +452,7 @@ export default function AnalyticsPage() {
             {daysUntilPayday} days left
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 24, flexWrap: 'wrap' }}>
+        <div className="an-payday-row" style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 6 }}>Safe to spend per day</div>
             <div style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-0.05em', color: currentCash >= 0 ? 'var(--green)' : 'var(--red)', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
@@ -471,7 +472,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Spending Breakdown + Merchant */}
-      <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 12 }}>
+      <div className="an-grid-main" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 12 }}>
         <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
           <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 4 }}>Income vs Expenses</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>Where your money went this month</div>
@@ -573,7 +574,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Trends + Budget */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 12 }}>
+      <div className="an-grid-main" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 12 }}>
         <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 4, flexWrap: 'wrap' }}>
             <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em' }}>{trendView === 'mom' ? 'Month-over-Month Trends' : 'Day-over-Day Trends'}</div>
@@ -648,7 +649,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Daily Spend Bars + Cumulative */}
-      <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="an-grid-half" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
           <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 4 }}>Daily Spending</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>Expense amount for each day this month</div>
@@ -709,7 +710,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Category Bars + Radar */}
-      <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 12 }}>
+      <div className="an-grid-main" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 12 }}>
         <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
           <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 4 }}>Spending by Category</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>Top categories ranked by expense amount</div>
@@ -781,7 +782,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Waterfall + Savings Trend */}
-      <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="an-grid-half" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
           <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 4 }}>Income Waterfall</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>How income flows into expenses and net savings</div>
@@ -868,9 +869,9 @@ export default function AnalyticsPage() {
 
       {/* Spending Heatmap */}
       <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4, gap: 8, flexWrap: 'wrap' }}>
           <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em' }}>Spending Heatmap</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>darker = higher spend · click a day to inspect</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Tap a day to inspect</div>
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>Daily expense intensity for {MONTHS[month-1]} {year}</div>
         {loading ? <Skeleton h={120} r={10} /> : (
@@ -930,14 +931,15 @@ export default function AnalyticsPage() {
                   <div onClick={() => setSelectedDay(null)} style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)' }} />
                   {/* Modal */}
                   <div style={{
-                    position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                    zIndex: 50, width: 380, maxWidth: 'calc(100vw - 32px)', maxHeight: '70vh',
-                    background: 'var(--surface)', border: '1px solid var(--border-2)', borderRadius: 16,
-                    boxShadow: '0 24px 64px rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column',
-                    overflow: 'hidden', animation: 'fadeUp 0.18s ease',
+                    position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+                    zIndex: 50, width: '100%', maxWidth: 480, maxHeight: '75vh',
+                    background: 'var(--surface)', border: '1px solid var(--border-2)', borderRadius: '20px 20px 0 0',
+                    boxShadow: '0 -8px 48px rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column',
+                    overflow: 'hidden', animation: 'slideInUp 0.22s cubic-bezier(0.34,1.2,0.64,1) both',
                   }}>
                     {/* Header */}
-                    <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+                    <div style={{ padding: '12px 20px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+                      <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border-2)', margin: '0 auto 12px' }} />
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                         <div>
                           <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em' }}>{dow}, {MONTHS[month-1]} {selectedDay}</div>
@@ -978,7 +980,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Budget vs Actual + Weekday Pattern */}
-      <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="an-grid-half" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
           <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 4 }}>Budget vs Actual</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>Side-by-side budget limit and actual spend per category</div>
@@ -1044,7 +1046,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Biggest Transactions + Avg Tx by Category */}
-      <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="an-grid-half" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
 
         {/* Biggest single transactions */}
         <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
@@ -1174,7 +1176,7 @@ export default function AnalyticsPage() {
       {/* Monthly Summary */}
       <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
         <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 18 }}>Monthly Summary</div>
-        <div className="stats-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+        <div className="an-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
           {loading ? Array.from({length:4}).map((_,i) => <Skeleton key={i} h={72} r={10}/>) :
             [
               { label: 'Total Income',    value: stats ? fmt(stats.income) : '—',   color: 'var(--green)' },
