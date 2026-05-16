@@ -68,6 +68,18 @@ export const api = {
 
   convertCurrency: (fromCurrency: string, toCurrency: string) =>
     request('/convert-currency', { method: 'POST', body: JSON.stringify({ fromCurrency, toCurrency }) }),
+
+  getSavingsGoals: () => request('/savings-goals'),
+  createSavingsGoal: (body: object) =>
+    request('/savings-goals', { method: 'POST', body: JSON.stringify(body) }),
+  updateSavingsGoal: (id: number, body: object) =>
+    request(`/savings-goals/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteSavingsGoal: (id: number) =>
+    request(`/savings-goals/${id}`, { method: 'DELETE' }),
+  contributeToGoal: (id: number, amount: number, note?: string, date?: string) =>
+    request(`/savings-goals/${id}`, { method: 'PUT', body: JSON.stringify({ action: 'contribute', amount, note, date }) }),
+  withdrawFromGoal: (id: number, amount: number, note?: string, date?: string) =>
+    request(`/savings-goals/${id}`, { method: 'PUT', body: JSON.stringify({ action: 'withdraw', amount, note, date }) }),
 };
 
 export const scanScreenshot = async (imageBase64: string, mimeType: string) => {
