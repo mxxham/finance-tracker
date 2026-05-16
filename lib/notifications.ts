@@ -109,13 +109,15 @@ export async function unsubscribeFromPush(): Promise<void> {
 export interface BudgetAlertResult {
   fired: number; // how many alerts were shown
   budgets: { name: string; pct: number; spent: number; limit: number }[];
+  skipped: number; // how many were already sent this session
 }
 
 export async function checkBudgetAlerts(
-  threshold: number // e.g. 80 means alert at 80%
+  threshold: number, // e.g. 80 means alert at 80%
+  force = false      // if true, bypass session dedup and fire all qualifying alerts
 ): Promise<BudgetAlertResult> {
   const token = localStorage.getItem('ft_token');
-  if (!token) return { fired: 0, budgets: [] };
+  if (!token) return { fired: 0, budgets: [], skipped: 0 };
 
   const now = new Date();
   const month = now.getMonth() + 1;
@@ -124,7 +126,7 @@ export async function checkBudgetAlerts(
   const res = await fetch(`/api/budgets?month=${month}&year=${year}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) return { fired: 0, budgets: [] };
+  if (!res.ok) return { fired: 0, budgets: [], skipped: 0 };
   const budgets: { category_name: string; amount: number; spent: number }[] = await res.json();
 
   const alerting = budgets
@@ -136,18 +138,20 @@ export async function checkBudgetAlerts(
     }))
     .filter(b => b.pct >= threshold && b.limit > 0);
 
-  // Deduplicate — don't fire the same alert twice in a session
+  // Deduplicate — don't fire the same alert twice in a session (unless forced)
   const STORAGE_KEY = `ft_notif_sent_${month}_${year}`;
-  const alreadySent: string[] = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '[]');
+  const alreadySent: string[] = force ? [] : JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '[]');
   const toFire = alerting.filter(b => !alreadySent.includes(`${b.name}_${Math.floor(b.pct / 10) * 10}`));
+  const skipped = alerting.length - toFire.length;
 
+  // Fire one notification per qualifying budget
   let fired = 0;
   for (const budget of toFire) {
     const tag = `${budget.name}_${Math.floor(budget.pct / 10) * 10}`;
     const emoji = budget.pct >= 100 ? '🚨' : budget.pct >= 90 ? '⚠️' : '📊';
     const title = budget.pct >= 100
-      ? `${budget.name} budget exceeded!`
-      : `${budget.name} at ${budget.pct}%`;
+      ? `${emoji} ${budget.name} budget exceeded!`
+      : `${emoji} ${budget.name} at ${budget.pct}%`;
     const body = budget.pct >= 100
       ? `You've spent ${budget.spent.toLocaleString()} of your ${budget.limit.toLocaleString()} limit`
       : `Spent ${budget.spent.toLocaleString()} of ${budget.limit.toLocaleString()} — ${budget.limit - budget.spent > 0 ? `${(budget.limit - budget.spent).toLocaleString()} remaining` : 'limit reached'}`;
@@ -157,7 +161,7 @@ export async function checkBudgetAlerts(
     if ('serviceWorker' in navigator) {
       try {
         const reg = await navigator.serviceWorker.ready;
-        await reg.showNotification(`${emoji} FinTrack — ${title}`, {
+        await reg.showNotification(title, {
           body,
           icon: '/icon-192.png',
           badge: '/icon-72.png',
@@ -171,15 +175,15 @@ export async function checkBudgetAlerts(
     }
 
     if (!sent) {
-      sendLocalNotification(`${emoji} FinTrack — ${title}`, body, { tag: `budget-${tag}` });
+      sendLocalNotification(title, body, { tag: `budget-${tag}` });
     }
 
-    alreadySent.push(tag);
+    if (!force) alreadySent.push(tag);
     fired++;
   }
 
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(alreadySent));
-  return { fired, budgets: alerting };
+  if (!force) sessionStorage.setItem(STORAGE_KEY, JSON.stringify(alreadySent));
+  return { fired, budgets: alerting, skipped };
 }
 
 // ── Test notification ─────────────────────────────────────────────────────────

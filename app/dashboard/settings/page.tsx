@@ -208,7 +208,18 @@ export default function SettingsPage() {
   const handleCheckNow = async () => {
     setNotifLoading(true);
     try {
-      await checkBudgetAlerts(alertThreshold);
+      // force=true bypasses session dedup so every qualifying budget fires a notification,
+      // even if alerts were already sent earlier this session.
+      const result = await checkBudgetAlerts(alertThreshold, true);
+      if (result.fired === 0) {
+        if (result.budgets.length === 0) {
+          showToast(`All budgets are under ${alertThreshold}% — nothing to alert`);
+        } else {
+          showToast(`${result.budgets.length} budget${result.budgets.length > 1 ? 's' : ''} checked — none need alerting yet`);
+        }
+      } else {
+        showToast(`Fired ${result.fired} budget alert${result.fired > 1 ? 's' : ''}`);
+      }
     } finally {
       setNotifLoading(false);
     }
