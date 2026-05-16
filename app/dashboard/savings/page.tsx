@@ -100,9 +100,7 @@ function MiniBar({ pct, color }: { pct: number; color: string }) {
   const [w, setW] = useState(0);
   useEffect(() => { const t = setTimeout(() => setW(Math.min(pct, 100)), 80); return () => clearTimeout(t); }, [pct]);
   return (
-    <div style={{ height: 6, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden' }}>
-      <div style={{ height: '100%', borderRadius: 99, width: `${w}%`, background: color, transition: 'width 0.9s cubic-bezier(0.34,1.1,0.64,1)', boxShadow: `0 0 8px ${color}55` }} />
-    </div>
+    <div style={{ height: '100%', borderRadius: 99, width: `${w}%`, background: color, transition: 'width 0.9s cubic-bezier(0.34,1.1,0.64,1)', boxShadow: `0 0 8px ${color}55`, minWidth: w > 0 ? 6 : 0 }} />
   );
 }
 
@@ -546,54 +544,75 @@ function GoalCard({ goal, onSelect, isSelected, fmt }: {
   const daysLeft = goal.deadline ? daysUntil(goal.deadline) : null;
   const isOverdue = daysLeft !== null && daysLeft < 0 && !isCompleted;
 
+  // Monthly amount needed
+  const monthsLeft = goal.deadline ? monthsUntil(goal.deadline) : null;
+  const monthlyNeeded = monthsLeft !== null && monthsLeft > 0 ? remaining / monthsLeft : null;
+
   return (
     <div
       onClick={onSelect}
       style={{
         background: 'var(--surface)',
-        border: `1.5px solid ${isSelected ? goal.color : isCompleted ? 'rgba(34,212,122,0.2)' : 'var(--border)'}`,
-        borderRadius: 16, padding: 18, cursor: 'pointer',
+        border: `1.5px solid ${isSelected ? goal.color : isCompleted ? 'rgba(34,212,122,0.25)' : 'var(--border)'}`,
+        borderRadius: 16, padding: '16px 18px', cursor: 'pointer',
         transition: 'all 0.18s ease',
-        opacity: isPaused ? 0.7 : 1,
-        boxShadow: isSelected ? `0 0 0 1px ${goal.color}40, 0 4px 20px ${goal.color}20` : 'none',
+        opacity: isPaused ? 0.75 : 1,
+        boxShadow: isSelected ? `0 0 0 1px ${goal.color}40, 0 6px 24px ${goal.color}18` : '0 1px 4px rgba(0,0,0,0.12)',
+        position: 'relative',
+        overflow: 'hidden',
       }}
-      onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.borderColor = goal.color + '60'; }}
-      onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.borderColor = isCompleted ? 'rgba(34,212,122,0.2)' : 'var(--border)'; }}
+      onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.borderColor = goal.color + '70'; }}
+      onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.borderColor = isCompleted ? 'rgba(34,212,122,0.25)' : 'var(--border)'; }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 11, background: goal.color + '20', border: `1.5px solid ${goal.color}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{goal.icon}</div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 2 }}>{goal.name}</div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: isCompleted ? 'var(--green)' : isPaused ? 'var(--amber)' : goal.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {isCompleted ? '✓ Completed' : isPaused ? '⏸ Paused' : isOverdue ? '⚠ Overdue' : 'Active'}
-            </div>
+      {/* Colored top accent bar */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: isCompleted ? 'var(--green)' : isPaused ? 'var(--amber)' : goal.color, opacity: isSelected ? 1 : 0.5, borderRadius: '16px 16px 0 0' }} />
+
+      {/* Header row: icon + name + pct */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, marginTop: 4 }}>
+        <div style={{ width: 44, height: 44, borderRadius: 12, background: goal.color + '22', border: `1.5px solid ${goal.color}38`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{goal.icon}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{goal.name}</div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 99, fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase',
+            background: isCompleted ? 'rgba(34,212,122,0.12)' : isPaused ? 'rgba(245,166,35,0.12)' : isOverdue ? 'rgba(240,82,82,0.12)' : goal.color + '18',
+            color: isCompleted ? 'var(--green)' : isPaused ? 'var(--amber)' : isOverdue ? 'var(--red)' : goal.color,
+          }}>
+            {isCompleted ? '✓ Done' : isPaused ? '⏸ Paused' : isOverdue ? '⚠ Overdue' : '● Active'}
           </div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)', color: goal.color, letterSpacing: '-0.02em' }}>{pct.toFixed(0)}%</div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'var(--font-mono)', color: isCompleted ? 'var(--green)' : goal.color, letterSpacing: '-0.03em', lineHeight: 1 }}>{pct.toFixed(0)}<span style={{ fontSize: 12, fontWeight: 600 }}>%</span></div>
         </div>
       </div>
 
-      <MiniBar pct={pct} color={isCompleted ? 'var(--green)' : goal.color} />
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, fontSize: 11 }}>
-        <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-soft)', fontWeight: 600 }}>{fmt(Number(goal.current_amount))}</span>
-        <span style={{ color: 'var(--text-muted)' }}>{fmt(Number(goal.target_amount))}</span>
+      {/* Progress bar — thicker and more visible */}
+      <div style={{ height: 8, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden', marginBottom: 10 }}>
+        <MiniBar pct={pct} color={isCompleted ? 'var(--green)' : goal.color} />
       </div>
 
-      {!isCompleted && remaining > 0 && (
-        <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-muted)' }}>
-          {fmt(remaining)} to go
-          {daysLeft !== null && (
-            <span style={{ marginLeft: 4, color: isOverdue ? 'var(--red)' : daysLeft < 30 ? 'var(--amber)' : 'var(--text-muted)' }}>
-              · {isOverdue ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d left`}
+      {/* Amount row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+        <div>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--text-soft)' }}>{fmt(Number(goal.current_amount))}</span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 4 }}>saved</span>
+        </div>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)' }}>{fmt(Number(goal.target_amount))}</span>
+      </div>
+
+      {/* Footer: days left + monthly needed */}
+      {!isCompleted && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
+          <span style={{ color: isOverdue ? 'var(--red)' : daysLeft !== null && daysLeft < 30 ? 'var(--amber)' : 'var(--text-muted)' }}>
+            {daysLeft !== null ? (isOverdue ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d left`) : (isPaused ? 'Paused' : 'No deadline')}
+          </span>
+          {monthlyNeeded !== null && !isPaused && (
+            <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: 10 }}>
+              {fmt(monthlyNeeded)}<span style={{ fontFamily: 'inherit' }}>/mo needed</span>
             </span>
           )}
         </div>
       )}
       {isCompleted && (
-        <div style={{ marginTop: 6, fontSize: 11, color: 'var(--green)', fontWeight: 600 }}>Goal reached! 🎉</div>
+        <div style={{ fontSize: 12, color: 'var(--green)', fontWeight: 700 }}>Goal reached! 🎉</div>
       )}
     </div>
   );
@@ -774,19 +793,19 @@ export default function SavingsPage() {
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 1200 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 1200 }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Savings Goals</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-            {goals.length === 0 ? 'Set a goal and start saving' : `${goals.filter(g => g.status === 'active').length} active · ${goals.filter(g => g.status === 'completed').length} completed`}
+          <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 2 }}>Savings Goals</h1>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+            {loading ? 'Loading…' : goals.length === 0 ? 'Set a goal and start saving' : `${goals.filter(g => g.status === 'active').length} active · ${goals.filter(g => g.status === 'completed').length} completed`}
           </p>
         </div>
         <button
           onClick={() => setShowNewModal(true)}
-          style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)', whiteSpace: 'nowrap' }}>
+          style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
           + New Goal
         </button>
       </div>
@@ -796,27 +815,48 @@ export default function SavingsPage() {
         <SpendingAlertBanner alerts={spendingAlerts} fmt={fmt} onDismiss={() => setAlertsDismissed(true)} />
       )}
 
-      {/* Available balance info */}
-      {!loading && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)', width: 'fit-content', fontSize: 12 }}>
-          <span style={{ fontSize: 16 }}>💰</span>
-          <span style={{ color: 'var(--text-muted)' }}>Available to save:</span>
-          <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', color: availableBalance > 0 ? 'var(--green)' : 'var(--red)' }}>{fmt(availableBalance)}</span>
-          <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>(balance minus already saved)</span>
-        </div>
-      )}
-
-      {/* Summary stats */}
-      {!loading && goals.length > 0 && <SummaryStats goals={goals} fmt={fmt} />}
+      {/* Balance + Stats row */}
+      {!loading && (() => {
+        const active = goals.filter(g => g.status === 'active');
+        const completed = goals.filter(g => g.status === 'completed');
+        const totalSaved = goals.reduce((s, g) => s + Number(g.current_amount), 0);
+        const totalTarget = goals.reduce((s, g) => s + Number(g.target_amount), 0);
+        const overallPct = totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
+        const statCards = [
+          { label: 'Total Saved', value: goals.length > 0 ? fmt(totalSaved) : '—', sub: goals.length > 0 ? `across ${goals.length} goal${goals.length !== 1 ? 's' : ''}` : 'no goals yet', color: goals.length > 0 ? 'var(--accent)' : 'var(--text-muted)' },
+          { label: 'Total Target', value: goals.length > 0 ? fmt(totalTarget) : '—', sub: goals.length > 0 ? `${overallPct.toFixed(0)}% achieved` : 'no goals yet', color: 'var(--text-muted)' },
+          { label: 'Active', value: String(active.length), sub: 'on track', color: 'var(--green)' },
+          { label: 'Completed', value: String(completed.length), sub: completed.length > 0 ? '🎉 great job!' : 'keep going!', color: completed.length > 0 ? 'var(--green)' : 'var(--text-muted)' },
+        ];
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+            {/* Available balance — spans full on the left */}
+            <div style={{ background: 'var(--surface)', border: `1.5px solid ${availableBalance > 0 ? 'rgba(34,212,122,0.3)' : 'rgba(240,82,82,0.3)'}`, borderRadius: 14, padding: '12px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2, position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: availableBalance > 0 ? 'var(--green)' : 'var(--red)' }} />
+              <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Available</div>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', color: availableBalance > 0 ? 'var(--green)' : 'var(--red)', letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmt(availableBalance)}</div>
+              <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>to save</div>
+            </div>
+            {statCards.map((item, i) => (
+              <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 14px', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: item.color, opacity: 0.8 }} />
+                <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{item.label}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', color: item.color, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.value}</div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>{item.sub}</div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Loading skeletons */}
       {loading && (
-        <div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            {[120, 100, 110, 90].map((w, i) => <Skeleton key={i} w={w} h={36} r={10} />)}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+            {[1,2,3,4,5].map(i => <Skeleton key={i} h={72} r={14} />)}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-            {[1, 2, 3].map(i => (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {[1, 2].map(i => (
               <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 18 }}>
                 <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
                   <Skeleton w={40} h={40} r={11} /><div style={{ flex: 1 }}><Skeleton h={13} /><Skeleton w="60%" h={10} /></div>
@@ -830,39 +870,26 @@ export default function SavingsPage() {
 
       {/* Empty state */}
       {!loading && goals.length === 0 && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: 0, overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 320 }}>
-            <div style={{ padding: 40, background: 'var(--surface-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-              <div style={{ fontSize: 64, lineHeight: 1 }}>🎯</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', maxWidth: 180 }}>
-                {['🏠 Emergency fund', '✈️ Next vacation', '💻 New laptop', '🎓 Education'].map(item => (
-                  <div key={item} style={{ padding: '8px 14px', borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)', fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>{item}</div>
-                ))}
-              </div>
-            </div>
-            <div style={{ padding: 40, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 20 }}>
-              <div>
-                <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.03em', marginBottom: 10 }}>Start saving for what matters</div>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.7 }}>
-                  Create savings goals for anything — emergencies, travel, big purchases, or long-term dreams. Track contributions, set deadlines, and celebrate when you hit your targets.
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {['Set a target amount and optional deadline', 'Log contributions and withdrawals over time', 'See how much to save monthly to stay on track', 'Pause, edit, or complete goals anytime'].map(item => (
-                  <div key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: 'var(--text-soft)' }}>
-                    <span style={{ color: 'var(--green)', marginTop: 1, flexShrink: 0 }}>✓</span><span>{item}</span>
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => setShowNewModal(true)} style={{ padding: '12px 24px', borderRadius: 10, fontSize: 14, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)', alignSelf: 'flex-start' }}>
-                Create your first goal →
-              </button>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center' }}>
+          <div style={{ fontSize: 48, lineHeight: 1 }}>🎯</div>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.03em', marginBottom: 6 }}>Start saving for what matters</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 320 }}>
+              Set a target, pick a deadline, and track your progress. Goals auto-calculate how much to save each month.
             </div>
           </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+            {['🏠 Emergency fund', '✈️ Vacation', '💻 New laptop', '🎓 Education'].map(item => (
+              <div key={item} style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)' }}>{item}</div>
+            ))}
+          </div>
+          <button onClick={() => setShowNewModal(true)} style={{ padding: '11px 24px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)' }}>
+            Create your first goal →
+          </button>
         </div>
       )}
 
-      {/* Main content: goals list + detail panel */}
+      {/* Main content: filter tabs + goals list + detail panel */}
       {!loading && goals.length > 0 && (
         <>
           {/* Filter tabs */}
@@ -874,15 +901,15 @@ export default function SavingsPage() {
             ))}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: selectedGoal ? '1fr 1fr 360px' : '1fr 1fr 1fr', gap: 14, alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: selectedGoal ? '1fr 360px' : '1fr', gap: 14, alignItems: 'start' }}>
 
-            {/* Goal cards */}
+            {/* Goal cards grid */}
             {filteredGoals.length === 0 ? (
-              <div style={{ gridColumn: selectedGoal ? '1 / 3' : '1 / 4', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '36px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                 No {filter} goals yet
               </div>
             ) : (
-              <div style={{ gridColumn: selectedGoal ? '1 / 3' : '1 / 4', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: selectedGoal ? '1fr' : 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
                 {filteredGoals.map(goal => (
                   <GoalCard
                     key={goal.id}
