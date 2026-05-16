@@ -72,13 +72,23 @@ function SwipeableRow({ tx, fmt, onEdit, onDelete }: {
       <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: ACTION_W, display: 'flex' }}>
         <button
           onClick={() => { close(); onEdit(); }}
-          style={{ flex: 1, background: '#3b82f6', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, cursor: 'pointer' }}>
-          <span style={{ fontSize: 18 }}>✏️</span>Edit
+          style={{ flex: 1, background: '#3b82f6', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Edit
         </button>
         <button
           onClick={() => { close(); onDelete(); }}
-          style={{ flex: 1, background: '#ef4444', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, cursor: 'pointer' }}>
-          <span style={{ fontSize: 18 }}>🗑️</span>Delete
+          style={{ flex: 1, background: '#ef4444', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+            <path d="M10 11v6M14 11v6"/>
+            <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+          </svg>
+          Delete
         </button>
       </div>
 
@@ -119,7 +129,11 @@ function SwipeableRow({ tx, fmt, onEdit, onDelete }: {
           </div>
           <div style={{ fontSize: 10, fontWeight: 600, color: tx.type === 'income' ? 'var(--green)' : 'var(--red)', opacity: 0.7, textTransform: 'capitalize', marginTop: 2 }}>{tx.type}</div>
         </div>
-        <div style={{ color: 'var(--text-muted)', fontSize: 18, opacity: swiped ? 0 : 0.25, transition: 'opacity 0.2s', flexShrink: 0 }}>‹</div>
+        <div style={{ color: 'var(--text-muted)', opacity: swiped ? 0 : 0.25, transition: 'opacity 0.2s', flexShrink: 0 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </div>
       </div>
     </div>
   );
