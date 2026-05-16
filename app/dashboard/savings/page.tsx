@@ -242,29 +242,32 @@ function ContributeModal({ goal, mode, availableBalance, onClose, onDone, fmt }:
 
   const remaining = Number(goal.target_amount) - Number(goal.current_amount);
   const isAdd = mode === 'add';
-
-  // For adding: cap by both remaining goal amount and actual available balance
-  const maxAddable = isAdd ? Math.min(remaining, availableBalance) : Number(goal.current_amount);
-  const enteredAmount = Number(amount) || 0;
-  const exceedsBalance = isAdd && enteredAmount > availableBalance;
-  const exceedsGoal = isAdd && enteredAmount > remaining && remaining > 0;
+  // For add mode: cap by both remaining goal amount and user's available balance
+  const maxAdd = isAdd ? Math.min(remaining, availableBalance) : Number(goal.current_amount);
 
   const quickAmounts = isAdd
-    ? [10000, 50000, 100000, 250000, 500000].filter(a => a <= maxAddable * 1.1 && a <= availableBalance)
+    ? [10000, 50000, 100000, 250000, 500000].filter(a => a <= maxAdd)
     : [10000, 50000, 100000].filter(a => a <= Number(goal.current_amount));
 
+  const enteredAmount = Number(amount);
+  const exceedsBalance = isAdd && enteredAmount > availableBalance;
+  const exceedsRemaining = isAdd && enteredAmount > remaining;
+
   const handleSubmit = async () => {
-    if (!amount || Number(amount) <= 0) { showToast('Enter a valid amount', 'error'); return; }
-    if (isAdd && Number(amount) > availableBalance) { showToast(`You only have ${fmt(availableBalance)} available in your account`, 'error'); return; }
-    if (!isAdd && Number(amount) > Number(goal.current_amount)) { showToast('Cannot withdraw more than current savings', 'error'); return; }
+    if (!amount || enteredAmount <= 0) { showToast('Enter a valid amount', 'error'); return; }
+    if (isAdd && enteredAmount > availableBalance) {
+      showToast(`Insufficient balance. You only have ${fmt(availableBalance)} available.`, 'error');
+      return;
+    }
+    if (!isAdd && enteredAmount > Number(goal.current_amount)) { showToast('Cannot withdraw more than current savings', 'error'); return; }
     setLoading(true);
     try {
       if (isAdd) {
-        await api.contributeToGoal(goal.id, Number(amount), note || undefined, date);
+        await api.contributeToGoal(goal.id, enteredAmount, note || undefined, date);
       } else {
-        await api.withdrawFromGoal(goal.id, Number(amount), note || undefined, date);
+        await api.withdrawFromGoal(goal.id, enteredAmount, note || undefined, date);
       }
-      showToast(isAdd ? `Added ${fmt(Number(amount))} to ${goal.name}` : `Withdrew ${fmt(Number(amount))} from ${goal.name}`);
+      showToast(isAdd ? `Added ${fmt(enteredAmount)} to ${goal.name}` : `Withdrew ${fmt(enteredAmount)} from ${goal.name}`);
       onDone();
     } catch { showToast('Failed to update goal', 'error'); }
     finally { setLoading(false); }
@@ -289,31 +292,28 @@ function ContributeModal({ goal, mode, availableBalance, onClose, onDone, fmt }:
 
         {isAdd && remaining > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ padding: '10px 14px', borderRadius: 10, background: goal.color + '12', border: `1px solid ${goal.color}25`, fontSize: 12, color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span><span style={{ color: 'var(--text-soft)', fontWeight: 600 }}>{fmt(remaining)}</span> remaining to reach goal</span>
-              <span style={{ color: availableBalance > 0 ? 'var(--green)' : 'var(--red)', fontWeight: 700 }}>
-                {fmt(availableBalance)} available
-              </span>
+            <div style={{ padding: '10px 14px', borderRadius: 10, background: goal.color + '12', border: `1px solid ${goal.color}25`, fontSize: 12, color: 'var(--text-muted)' }}>
+              <span style={{ color: 'var(--text-soft)', fontWeight: 600 }}>{fmt(remaining)}</span> remaining to reach your goal
             </div>
-            {availableBalance <= 0 && (
-              <div style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--red-muted)', border: '1px solid rgba(239,68,68,0.3)', fontSize: 12, color: 'var(--red)', fontWeight: 600 }}>
-                ⚠️ Your account balance is too low to add savings right now.
-              </div>
-            )}
+            <div style={{ padding: '10px 14px', borderRadius: 10, background: availableBalance > 0 ? 'rgba(34,212,122,0.08)' : 'rgba(240,82,82,0.08)', border: `1px solid ${availableBalance > 0 ? 'rgba(34,212,122,0.2)' : 'rgba(240,82,82,0.2)'}`, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 14 }}>{availableBalance > 0 ? '💰' : '⚠️'}</span>
+              <span style={{ color: 'var(--text-muted)' }}>Available balance:</span>
+              <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', color: availableBalance > 0 ? 'var(--green)' : 'var(--red)' }}>{fmt(availableBalance)}</span>
+            </div>
           </div>
         )}
 
         <div>
           <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Amount</label>
-          <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" autoFocus min="0" style={{ fontSize: 20, fontFamily: 'var(--font-mono)', fontWeight: 700, borderColor: exceedsBalance ? 'var(--red)' : undefined }} />
+          <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" autoFocus min="0" max={isAdd ? availableBalance : undefined} style={{ fontSize: 20, fontFamily: 'var(--font-mono)', fontWeight: 700, borderColor: exceedsBalance ? 'var(--red)' : undefined }} />
           {exceedsBalance && (
             <div style={{ marginTop: 6, fontSize: 11, color: 'var(--red)', fontWeight: 600 }}>
               ⚠️ Exceeds your available balance of {fmt(availableBalance)}
             </div>
           )}
-          {!exceedsBalance && exceedsGoal && (
+          {exceedsRemaining && !exceedsBalance && (
             <div style={{ marginTop: 6, fontSize: 11, color: 'var(--amber)', fontWeight: 600 }}>
-              This exceeds the remaining goal amount
+              This will overshoot your goal target
             </div>
           )}
           {quickAmounts.length > 0 && (
@@ -323,9 +323,9 @@ function ContributeModal({ goal, mode, availableBalance, onClose, onDone, fmt }:
                   {fmt(a)}
                 </button>
               ))}
-              {isAdd && remaining > 0 && availableBalance > 0 && (
-                <button onClick={() => setAmount(String(Math.ceil(Math.min(remaining, availableBalance))))} style={{ padding: '4px 10px', borderRadius: 7, fontSize: 11, fontWeight: 700, background: goal.color + '20', color: goal.color, border: `1px solid ${goal.color}30` }}>
-                  {availableBalance < remaining ? `Max available (${fmt(availableBalance)})` : `Fill gap (${fmt(remaining)})`}
+              {isAdd && maxAdd > 0 && (
+                <button onClick={() => setAmount(String(Math.floor(maxAdd)))} style={{ padding: '4px 10px', borderRadius: 7, fontSize: 11, fontWeight: 700, background: goal.color + '20', color: goal.color, border: `1px solid ${goal.color}30` }}>
+                  {remaining <= availableBalance ? `Fill gap (${fmt(remaining)})` : `Max available (${fmt(availableBalance)})`}
                 </button>
               )}
             </div>
@@ -345,8 +345,8 @@ function ContributeModal({ goal, mode, availableBalance, onClose, onDone, fmt }:
 
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Cancel</button>
-          <button onClick={handleSubmit} disabled={loading || exceedsBalance} style={{ flex: 2, padding: 12, borderRadius: 10, fontSize: 13, fontWeight: 700, background: isAdd ? goal.color : 'var(--red)', color: 'white', border: 'none', boxShadow: `0 4px 16px ${isAdd ? goal.color : 'var(--red)'}55`, opacity: (loading || exceedsBalance) ? 0.5 : 1, cursor: exceedsBalance ? 'not-allowed' : 'pointer' }}>
-            {loading ? '…' : exceedsBalance ? 'Insufficient Balance' : isAdd ? `Add ${amount ? fmt(Number(amount)) : 'Money'}` : `Withdraw ${amount ? fmt(Number(amount)) : 'Money'}`}
+          <button onClick={handleSubmit} disabled={loading || (isAdd && exceedsBalance)} style={{ flex: 2, padding: 12, borderRadius: 10, fontSize: 13, fontWeight: 700, background: isAdd ? (exceedsBalance ? 'var(--surface-2)' : goal.color) : 'var(--red)', color: exceedsBalance ? 'var(--text-muted)' : 'white', border: 'none', boxShadow: exceedsBalance ? 'none' : `0 4px 16px ${isAdd ? goal.color : 'var(--red)'}55`, opacity: loading ? 0.7 : 1 }}>
+            {loading ? '…' : exceedsBalance ? 'Insufficient balance' : isAdd ? `Add ${amount ? fmt(enteredAmount) : 'Money'}` : `Withdraw ${amount ? fmt(enteredAmount) : 'Money'}`}
           </button>
         </div>
       </div>
@@ -626,6 +626,49 @@ function SummaryStats({ goals, fmt }: { goals: SavingsGoal[]; fmt: (n: number) =
   );
 }
 
+// ── Spending Alert Banner ─────────────────────────────────────────
+interface SpendingAlert {
+  categoryName: string;
+  spent: number;
+  limit: number;
+  pct: number;
+  color: string;
+}
+
+function SpendingAlertBanner({ alerts, fmt, onDismiss }: { alerts: SpendingAlert[]; fmt: (n: number) => string; onDismiss: () => void }) {
+  if (alerts.length === 0) return null;
+  const overBudget = alerts.filter(a => a.pct >= 100);
+  const nearLimit = alerts.filter(a => a.pct >= 80 && a.pct < 100);
+
+  return (
+    <div style={{ background: 'var(--surface)', border: `1.5px solid ${overBudget.length > 0 ? 'var(--red)' : 'var(--amber)'}`, borderRadius: 14, padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 18 }}>{overBudget.length > 0 ? '🚨' : '⚠️'}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: overBudget.length > 0 ? 'var(--red)' : 'var(--amber)' }}>
+            {overBudget.length > 0 ? `${overBudget.length} budget${overBudget.length > 1 ? 's' : ''} exceeded this month` : `${nearLimit.length} budget${nearLimit.length > 1 ? 's' : ''} near limit`}
+          </span>
+        </div>
+        <button onClick={onDismiss} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 16, cursor: 'pointer', padding: 2 }}>&times;</button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {alerts.map(a => (
+          <div key={a.categoryName} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: a.pct >= 100 ? 'var(--red)' : 'var(--amber)', flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: 'var(--text-soft)', flex: 1 }}>{a.categoryName}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-mono)', color: a.pct >= 100 ? 'var(--red)' : 'var(--amber)' }}>
+              {fmt(a.spent)} / {fmt(a.limit)} ({a.pct.toFixed(0)}%)
+            </span>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+        Consider reducing spending in these categories before adding to savings.
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────
 export default function SavingsPage() {
   const { fmt } = useSettings();
@@ -637,50 +680,47 @@ export default function SavingsPage() {
   const [contributeGoal, setContributeGoal] = useState<{ goal: SavingsGoal; mode: 'add' | 'withdraw' } | null>(null);
   const [modalSaving, setModalSaving] = useState(false);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'paused'>('all');
-  const [userClosedPanel, setUserClosedPanel] = useState(false);
   const [availableBalance, setAvailableBalance] = useState<number>(0);
-  const [spendingAlert, setSpendingAlert] = useState<{ message: string; level: 'warning' | 'danger' } | null>(null);
+  const [spendingAlerts, setSpendingAlerts] = useState<SpendingAlert[]>([]);
+  const [alertsDismissed, setAlertsDismissed] = useState(false);
 
   const selectedGoal = goals.find(g => g.id === selectedId) ?? null;
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [goalsData, statsData] = await Promise.all([
+      const [data, stats, budgets] = await Promise.all([
         api.getSavingsGoals(),
         api.getStats(),
+        api.getBudgets({ month: String(new Date().getMonth() + 1), year: String(new Date().getFullYear()) }),
       ]);
-      setGoals(Array.isArray(goalsData) ? goalsData : []);
+      setGoals(Array.isArray(data) ? data : []);
 
-      // Calculate available balance and check spending alerts
-      const balance = Number(statsData.balance ?? 0);
+      // Available balance = all-time income minus all-time expenses minus already saved in goals
+      const totalSaved = Array.isArray(data) ? data.reduce((s: number, g: SavingsGoal) => s + Number(g.current_amount), 0) : 0;
+      const balance = Math.max(0, Number(stats.balance || 0) - totalSaved);
       setAvailableBalance(balance);
 
-      const income = Number(statsData.income ?? 0);
-      const expenses = Number(statsData.expenses ?? 0);
-      if (income > 0) {
-        const spendingRatio = expenses / income;
-        if (spendingRatio >= 0.9) {
-          setSpendingAlert({ message: `You've spent ${(spendingRatio * 100).toFixed(0)}% of this month's income — you're almost out of budget!`, level: 'danger' });
-        } else if (spendingRatio >= 0.75) {
-          setSpendingAlert({ message: `You've used ${(spendingRatio * 100).toFixed(0)}% of this month's income. Consider slowing down spending.`, level: 'warning' });
-        } else {
-          setSpendingAlert(null);
-        }
-      }
+      // Build spending alerts: budgets >= 80% used
+      const alerts: SpendingAlert[] = (Array.isArray(budgets) ? budgets : [])
+        .filter((b: { amount: number; spent: number }) => Number(b.amount) > 0)
+        .map((b: { category_name: string; amount: number; spent: number; category_color: string }) => ({
+          categoryName: b.category_name,
+          spent: Number(b.spent),
+          limit: Number(b.amount),
+          pct: (Number(b.spent) / Number(b.amount)) * 100,
+          color: b.category_color,
+        }))
+        .filter((a: SpendingAlert) => a.pct >= 80)
+        .sort((a: SpendingAlert, b: SpendingAlert) => b.pct - a.pct);
+      setSpendingAlerts(alerts);
     } catch { showToast('Failed to load savings goals', 'error'); }
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  // Auto-select first active goal on initial load only (not when user explicitly closed)
-  useEffect(() => {
-    if (!loading && goals.length > 0 && selectedId === null && !userClosedPanel) {
-      const first = goals.find(g => g.status === 'active') ?? goals[0];
-      setSelectedId(first.id);
-    }
-  }, [loading, goals, selectedId, userClosedPanel]);
+  // No auto-selection — user opens detail panel by clicking a card
 
   const handleCreate = async (data: Partial<SavingsGoal>) => {
     setModalSaving(true);
@@ -736,23 +776,7 @@ export default function SavingsPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 1200 }}>
 
-      {/* Spending Alert Banner */}
-      {spendingAlert && (
-        <div style={{
-          padding: '12px 18px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12,
-          background: spendingAlert.level === 'danger' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
-          border: `1px solid ${spendingAlert.level === 'danger' ? 'rgba(239,68,68,0.35)' : 'rgba(245,158,11,0.35)'}`,
-        }}>
-          <span style={{ fontSize: 20 }}>{spendingAlert.level === 'danger' ? '🚨' : '⚠️'}</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: spendingAlert.level === 'danger' ? 'var(--red)' : 'var(--amber)', marginBottom: 1 }}>
-              {spendingAlert.level === 'danger' ? 'Spending Limit Reached' : 'High Spending Warning'}
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{spendingAlert.message}</div>
-          </div>
-          <button onClick={() => setSpendingAlert(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 18, padding: 4, cursor: 'pointer' }}>&times;</button>
-        </div>
-      )}
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Savings Goals</h1>
@@ -766,6 +790,21 @@ export default function SavingsPage() {
           + New Goal
         </button>
       </div>
+
+      {/* Spending alerts */}
+      {!alertsDismissed && spendingAlerts.length > 0 && (
+        <SpendingAlertBanner alerts={spendingAlerts} fmt={fmt} onDismiss={() => setAlertsDismissed(true)} />
+      )}
+
+      {/* Available balance info */}
+      {!loading && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)', width: 'fit-content', fontSize: 12 }}>
+          <span style={{ fontSize: 16 }}>💰</span>
+          <span style={{ color: 'var(--text-muted)' }}>Available to save:</span>
+          <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', color: availableBalance > 0 ? 'var(--green)' : 'var(--red)' }}>{fmt(availableBalance)}</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>(balance minus already saved)</span>
+        </div>
+      )}
 
       {/* Summary stats */}
       {!loading && goals.length > 0 && <SummaryStats goals={goals} fmt={fmt} />}
@@ -850,7 +889,7 @@ export default function SavingsPage() {
                     goal={goal}
                     fmt={fmt}
                     isSelected={selectedId === goal.id}
-                    onSelect={() => { setUserClosedPanel(false); setSelectedId(selectedId === goal.id ? null : goal.id); }}
+                    onSelect={() => setSelectedId(selectedId === goal.id ? null : goal.id)}
                   />
                 ))}
               </div>
@@ -866,7 +905,7 @@ export default function SavingsPage() {
                   onWithdraw={() => setContributeGoal({ goal: selectedGoal, mode: 'withdraw' })}
                   onEdit={() => setEditGoal(selectedGoal)}
                   onDelete={handleDelete}
-                  onClose={() => { setSelectedId(null); setUserClosedPanel(true); }}
+                  onClose={() => setSelectedId(null)}
                   onStatusChange={handleStatusChange}
                 />
               </div>
