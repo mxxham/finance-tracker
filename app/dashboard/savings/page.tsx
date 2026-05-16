@@ -228,12 +228,13 @@ function GoalModal({ initial, onClose, onSave, saving, fmt }: GoalModalProps) {
 interface ContributeModalProps {
   goal: SavingsGoal;
   mode: 'add' | 'withdraw';
+  availableBalance: number;
   onClose: () => void;
   onDone: () => void;
   fmt: (n: number) => string;
 }
 
-function ContributeModal({ goal, mode, onClose, onDone, fmt }: ContributeModalProps) {
+function ContributeModal({ goal, mode, availableBalance, onClose, onDone, fmt }: ContributeModalProps) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -242,12 +243,19 @@ function ContributeModal({ goal, mode, onClose, onDone, fmt }: ContributeModalPr
   const remaining = Number(goal.target_amount) - Number(goal.current_amount);
   const isAdd = mode === 'add';
 
+  // For adding: cap by both remaining goal amount and actual available balance
+  const maxAddable = isAdd ? Math.min(remaining, availableBalance) : Number(goal.current_amount);
+  const enteredAmount = Number(amount) || 0;
+  const exceedsBalance = isAdd && enteredAmount > availableBalance;
+  const exceedsGoal = isAdd && enteredAmount > remaining && remaining > 0;
+
   const quickAmounts = isAdd
-    ? [10000, 50000, 100000, 250000, 500000].filter(a => a <= remaining * 1.1)
+    ? [10000, 50000, 100000, 250000, 500000].filter(a => a <= maxAddable * 1.1 && a <= availableBalance)
     : [10000, 50000, 100000].filter(a => a <= Number(goal.current_amount));
 
   const handleSubmit = async () => {
     if (!amount || Number(amount) <= 0) { showToast('Enter a valid amount', 'error'); return; }
+    if (isAdd && Number(amount) > availableBalance) { showToast(`You only have ${fmt(availableBalance)} available in your account`, 'error'); return; }
     if (!isAdd && Number(amount) > Number(goal.current_amount)) { showToast('Cannot withdraw more than current savings', 'error'); return; }
     setLoading(true);
     try {
@@ -280,14 +288,34 @@ function ContributeModal({ goal, mode, onClose, onDone, fmt }: ContributeModalPr
         </div>
 
         {isAdd && remaining > 0 && (
-          <div style={{ padding: '10px 14px', borderRadius: 10, background: goal.color + '12', border: `1px solid ${goal.color}25`, fontSize: 12, color: 'var(--text-muted)' }}>
-            <span style={{ color: 'var(--text-soft)', fontWeight: 600 }}>{fmt(remaining)}</span> remaining to reach your goal
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ padding: '10px 14px', borderRadius: 10, background: goal.color + '12', border: `1px solid ${goal.color}25`, fontSize: 12, color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span><span style={{ color: 'var(--text-soft)', fontWeight: 600 }}>{fmt(remaining)}</span> remaining to reach goal</span>
+              <span style={{ color: availableBalance > 0 ? 'var(--green)' : 'var(--red)', fontWeight: 700 }}>
+                {fmt(availableBalance)} available
+              </span>
+            </div>
+            {availableBalance <= 0 && (
+              <div style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--red-muted)', border: '1px solid rgba(239,68,68,0.3)', fontSize: 12, color: 'var(--red)', fontWeight: 600 }}>
+                ⚠️ Your account balance is too low to add savings right now.
+              </div>
+            )}
           </div>
         )}
 
         <div>
           <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Amount</label>
-          <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" autoFocus min="0" style={{ fontSize: 20, fontFamily: 'var(--font-mono)', fontWeight: 700 }} />
+          <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" autoFocus min="0" style={{ fontSize: 20, fontFamily: 'var(--font-mono)', fontWeight: 700, borderColor: exceedsBalance ? 'var(--red)' : undefined }} />
+          {exceedsBalance && (
+            <div style={{ marginTop: 6, fontSize: 11, color: 'var(--red)', fontWeight: 600 }}>
+              ⚠️ Exceeds your available balance of {fmt(availableBalance)}
+            </div>
+          )}
+          {!exceedsBalance && exceedsGoal && (
+            <div style={{ marginTop: 6, fontSize: 11, color: 'var(--amber)', fontWeight: 600 }}>
+              This exceeds the remaining goal amount
+            </div>
+          )}
           {quickAmounts.length > 0 && (
             <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
               {quickAmounts.map(a => (
@@ -295,9 +323,9 @@ function ContributeModal({ goal, mode, onClose, onDone, fmt }: ContributeModalPr
                   {fmt(a)}
                 </button>
               ))}
-              {isAdd && remaining > 0 && (
-                <button onClick={() => setAmount(String(Math.ceil(remaining)))} style={{ padding: '4px 10px', borderRadius: 7, fontSize: 11, fontWeight: 700, background: goal.color + '20', color: goal.color, border: `1px solid ${goal.color}30` }}>
-                  Fill gap ({fmt(remaining)})
+              {isAdd && remaining > 0 && availableBalance > 0 && (
+                <button onClick={() => setAmount(String(Math.ceil(Math.min(remaining, availableBalance))))} style={{ padding: '4px 10px', borderRadius: 7, fontSize: 11, fontWeight: 700, background: goal.color + '20', color: goal.color, border: `1px solid ${goal.color}30` }}>
+                  {availableBalance < remaining ? `Max available (${fmt(availableBalance)})` : `Fill gap (${fmt(remaining)})`}
                 </button>
               )}
             </div>
@@ -317,8 +345,8 @@ function ContributeModal({ goal, mode, onClose, onDone, fmt }: ContributeModalPr
 
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Cancel</button>
-          <button onClick={handleSubmit} disabled={loading} style={{ flex: 2, padding: 12, borderRadius: 10, fontSize: 13, fontWeight: 700, background: isAdd ? goal.color : 'var(--red)', color: 'white', border: 'none', boxShadow: `0 4px 16px ${isAdd ? goal.color : 'var(--red)'}55`, opacity: loading ? 0.7 : 1 }}>
-            {loading ? '…' : isAdd ? `Add ${amount ? fmt(Number(amount)) : 'Money'}` : `Withdraw ${amount ? fmt(Number(amount)) : 'Money'}`}
+          <button onClick={handleSubmit} disabled={loading || exceedsBalance} style={{ flex: 2, padding: 12, borderRadius: 10, fontSize: 13, fontWeight: 700, background: isAdd ? goal.color : 'var(--red)', color: 'white', border: 'none', boxShadow: `0 4px 16px ${isAdd ? goal.color : 'var(--red)'}55`, opacity: (loading || exceedsBalance) ? 0.5 : 1, cursor: exceedsBalance ? 'not-allowed' : 'pointer' }}>
+            {loading ? '…' : exceedsBalance ? 'Insufficient Balance' : isAdd ? `Add ${amount ? fmt(Number(amount)) : 'Money'}` : `Withdraw ${amount ? fmt(Number(amount)) : 'Money'}`}
           </button>
         </div>
       </div>
@@ -609,27 +637,50 @@ export default function SavingsPage() {
   const [contributeGoal, setContributeGoal] = useState<{ goal: SavingsGoal; mode: 'add' | 'withdraw' } | null>(null);
   const [modalSaving, setModalSaving] = useState(false);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'paused'>('all');
+  const [userClosedPanel, setUserClosedPanel] = useState(false);
+  const [availableBalance, setAvailableBalance] = useState<number>(0);
+  const [spendingAlert, setSpendingAlert] = useState<{ message: string; level: 'warning' | 'danger' } | null>(null);
 
   const selectedGoal = goals.find(g => g.id === selectedId) ?? null;
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await api.getSavingsGoals();
-      setGoals(Array.isArray(data) ? data : []);
+      const [goalsData, statsData] = await Promise.all([
+        api.getSavingsGoals(),
+        api.getStats(),
+      ]);
+      setGoals(Array.isArray(goalsData) ? goalsData : []);
+
+      // Calculate available balance and check spending alerts
+      const balance = Number(statsData.balance ?? 0);
+      setAvailableBalance(balance);
+
+      const income = Number(statsData.income ?? 0);
+      const expenses = Number(statsData.expenses ?? 0);
+      if (income > 0) {
+        const spendingRatio = expenses / income;
+        if (spendingRatio >= 0.9) {
+          setSpendingAlert({ message: `You've spent ${(spendingRatio * 100).toFixed(0)}% of this month's income — you're almost out of budget!`, level: 'danger' });
+        } else if (spendingRatio >= 0.75) {
+          setSpendingAlert({ message: `You've used ${(spendingRatio * 100).toFixed(0)}% of this month's income. Consider slowing down spending.`, level: 'warning' });
+        } else {
+          setSpendingAlert(null);
+        }
+      }
     } catch { showToast('Failed to load savings goals', 'error'); }
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  // Auto-select first active goal on load
+  // Auto-select first active goal on initial load only (not when user explicitly closed)
   useEffect(() => {
-    if (!loading && goals.length > 0 && selectedId === null) {
+    if (!loading && goals.length > 0 && selectedId === null && !userClosedPanel) {
       const first = goals.find(g => g.status === 'active') ?? goals[0];
       setSelectedId(first.id);
     }
-  }, [loading, goals, selectedId]);
+  }, [loading, goals, selectedId, userClosedPanel]);
 
   const handleCreate = async (data: Partial<SavingsGoal>) => {
     setModalSaving(true);
@@ -685,7 +736,23 @@ export default function SavingsPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 1200 }}>
 
-      {/* Header */}
+      {/* Spending Alert Banner */}
+      {spendingAlert && (
+        <div style={{
+          padding: '12px 18px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12,
+          background: spendingAlert.level === 'danger' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
+          border: `1px solid ${spendingAlert.level === 'danger' ? 'rgba(239,68,68,0.35)' : 'rgba(245,158,11,0.35)'}`,
+        }}>
+          <span style={{ fontSize: 20 }}>{spendingAlert.level === 'danger' ? '🚨' : '⚠️'}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: spendingAlert.level === 'danger' ? 'var(--red)' : 'var(--amber)', marginBottom: 1 }}>
+              {spendingAlert.level === 'danger' ? 'Spending Limit Reached' : 'High Spending Warning'}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{spendingAlert.message}</div>
+          </div>
+          <button onClick={() => setSpendingAlert(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 18, padding: 4, cursor: 'pointer' }}>&times;</button>
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Savings Goals</h1>
@@ -783,7 +850,7 @@ export default function SavingsPage() {
                     goal={goal}
                     fmt={fmt}
                     isSelected={selectedId === goal.id}
-                    onSelect={() => setSelectedId(selectedId === goal.id ? null : goal.id)}
+                    onSelect={() => { setUserClosedPanel(false); setSelectedId(selectedId === goal.id ? null : goal.id); }}
                   />
                 ))}
               </div>
@@ -799,7 +866,7 @@ export default function SavingsPage() {
                   onWithdraw={() => setContributeGoal({ goal: selectedGoal, mode: 'withdraw' })}
                   onEdit={() => setEditGoal(selectedGoal)}
                   onDelete={handleDelete}
-                  onClose={() => setSelectedId(null)}
+                  onClose={() => { setSelectedId(null); setUserClosedPanel(true); }}
                   onStatusChange={handleStatusChange}
                 />
               </div>
@@ -830,6 +897,7 @@ export default function SavingsPage() {
         <ContributeModal
           goal={contributeGoal.goal}
           mode={contributeGoal.mode}
+          availableBalance={availableBalance}
           onClose={() => setContributeGoal(null)}
           onDone={async () => { setContributeGoal(null); await load(); }}
           fmt={fmt}
