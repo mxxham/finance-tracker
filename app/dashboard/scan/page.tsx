@@ -81,9 +81,21 @@ export default function ScanPage() {
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) processFile(e.target.files[0]); };
   const handleDrop = (e: DragEvent) => { e.preventDefault(); setDragging(false); if (e.dataTransfer.files?.[0]) processFile(e.dataTransfer.files[0]); };
 
+  // Request notification permission silently before scanning so the prompt
+  // appears at a natural moment (user just pressed "Start Scan") rather than
+  // after they've already saved transactions.
+  const ensureNotifPermission = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+      await Notification.requestPermission();
+    }
+  };
+
   const runScan = async () => {
     if (!imageDataUrl) return;
     setStatus('loading_ocr'); setProgress(5); setProgressLabel('Loading OCR engine…'); setError('');
+    // Ask for notification permission now — feels natural ("scan is starting")
+    ensureNotifPermission();
     try {
       const { createWorker } = await import('tesseract.js');
       setStatus('ocr_running'); setProgressLabel('Initializing…'); setProgress(15);
@@ -151,38 +163,54 @@ export default function ScanPage() {
       setSaved(true);
       showToast(`${savedTxs.length} transactions saved!`);
 
-      // After save completes, notify with a compact summary (mobile/local fallback).
-      // Debug: log support + permission + notification object so we can see why it might not show.
+      // Fire a notification summarising what was just saved.
+      // Prefer SW showNotification (works when app is backgrounded on mobile),
+      // fall back to basic Notification API if SW isn't available.
       try {
-        // eslint-disable-next-line no-console
-        console.log('[Scan][Notification] after save:', {
-          txCount: savedTxs.length,
-          NotificationPermission: (typeof window !== 'undefined' && 'Notification' in window) ? window.Notification.permission : null,
-          serviceWorker: typeof window !== 'undefined' && 'serviceWorker' in navigator,
+        const total = savedTxs.reduce((s, tx) => s + tx.amount, 0);
+        const expenseCount = savedTxs.filter(tx => tx.type === 'expense').length;
+        const incomeCount  = savedTxs.filter(tx => tx.type === 'income').length;
+
+        // Build a compact per-transaction summary (up to 3 lines)
+        const lines = savedTxs.slice(0, 3).map(tx => {
+          const arrow    = tx.type === 'income' ? '↑' : '↓';
+          const merchant = merchantName(tx.description) || tx.category_hint || 'Unknown';
+          return `${arrow} ${merchant}  ${fmt(tx.amount)}`;
         });
+        if (savedTxs.length > 3) lines.push(`…and ${savedTxs.length - 3} more`);
 
-        const top = savedTxs.slice(0, 3).map(tx => {
-          const prefix = tx.type === 'income' ? '↑' : '↓';
-          const merchant = tx.description || tx.category_hint || 'Unknown';
-          return `${prefix} ${merchant} ${fmt(tx.amount)}`;
-        });
-        const remaining = savedTxs.length > 3 ? ` +${savedTxs.length - 3} more` : '';
+        const typeLabel = incomeCount && expenseCount
+          ? `${expenseCount} expense${expenseCount > 1 ? 's' : ''}, ${incomeCount} income`
+          : expenseCount
+            ? `${expenseCount} expense${expenseCount > 1 ? 's' : ''}`
+            : `${incomeCount} income`;
 
-        // sendLocalNotification returns Notification | null when permission isn't granted.
-        const notif = sendLocalNotification(
-          'Scan complete — transactions added',
-          `${top.join(' · ')}${remaining}`,
-          {
-            tag: 'ft-scan-result',
-            data: { url: '/dashboard/transactions' },
-            icon: '/icon-192.png',
-            badge: '/icon-72.png',
-          }
-        );
+        const title = `✅ ${savedTxs.length} transaction${savedTxs.length > 1 ? 's' : ''} saved  ·  ${fmt(total)}`;
+        const body  = lines.join('\n') + (savedTxs.length > 1 ? `\n${typeLabel}` : '');
 
-        // eslint-disable-next-line no-console
-        console.log('[Scan][Notification] sendLocalNotification result:', { sent: !!notif, notifTag: 'ft-scan-result' });
+        const notifOptions = {
+          body,
+          icon:  '/icon-192.png',
+          badge: '/icon-72.png',
+          tag:   'ft-scan-result',
+          data:  { url: '/dashboard/transactions' },
+          ...({ vibrate: [200, 100, 200] } as object),
+          ...({ renotify: true } as object),
+        };
 
+        // Try service-worker notification first (most reliable on mobile)
+        let sent = false;
+        if ('serviceWorker' in navigator) {
+          try {
+            const reg = await navigator.serviceWorker.ready;
+            await reg.showNotification(title, notifOptions);
+            sent = true;
+          } catch { /* fall through */ }
+        }
+        // Basic Notification API fallback (desktop / when SW not available)
+        if (!sent) {
+          sendLocalNotification(title, body, { tag: 'ft-scan-result', data: { url: '/dashboard/transactions' } });
+        }
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('[Scan][Notification] failed:', e);
