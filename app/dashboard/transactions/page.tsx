@@ -1,9 +1,129 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { showToast } from '@/components/Toast';
 import { useSettings } from '@/lib/SettingsContext';
+
+// ── Mobile detection hook ─────────────────────────────────────────
+function useIsMobile() {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  return mobile;
+}
+
+// ── Swipeable row for mobile ──────────────────────────────────────
+function SwipeableRow({ tx, fmt, onEdit, onDelete }: {
+  tx: { id: number; amount: number; type: string; description: string; date: string; category_name: string; category_color: string };
+  fmt: (n: number) => string;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const [offset, setOffset] = useState(0);
+  const [swiped, setSwiped] = useState(false);
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const dragging = useRef(false);
+  const isScrolling = useRef<boolean | null>(null);
+  const ACTION_W = 130;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
+    dragging.current = true;
+    isScrolling.current = null;
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!dragging.current) return;
+    const dx = e.touches[0].clientX - startX.current;
+    const dy = e.touches[0].clientY - startY.current;
+    if (isScrolling.current === null) {
+      isScrolling.current = Math.abs(dy) > Math.abs(dx);
+    }
+    if (isScrolling.current) return;
+    e.preventDefault();
+    const base = swiped ? -ACTION_W : 0;
+    const next = Math.max(-ACTION_W, Math.min(0, base + dx));
+    setOffset(next);
+  };
+
+  const onTouchEnd = () => {
+    dragging.current = false;
+    if (isScrolling.current) return;
+    const threshold = ACTION_W * 0.4;
+    const target = swiped
+      ? (offset > -(ACTION_W - threshold) ? 0 : -ACTION_W)
+      : (offset < -threshold ? -ACTION_W : 0);
+    setOffset(target);
+    setSwiped(target !== 0);
+  };
+
+  const close = () => { setOffset(0); setSwiped(false); };
+
+  return (
+    <div style={{ position: 'relative', overflow: 'hidden', borderBottom: '1px solid var(--border)' }}>
+      {/* Action buttons revealed behind */}
+      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: ACTION_W, display: 'flex' }}>
+        <button
+          onClick={() => { close(); onEdit(); }}
+          style={{ flex: 1, background: '#3b82f6', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, cursor: 'pointer' }}>
+          <span style={{ fontSize: 18 }}>✏️</span>Edit
+        </button>
+        <button
+          onClick={() => { close(); onDelete(); }}
+          style={{ flex: 1, background: '#ef4444', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, cursor: 'pointer' }}>
+          <span style={{ fontSize: 18 }}>🗑️</span>Delete
+        </button>
+      </div>
+
+      {/* Swipeable card content */}
+      <div
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onClick={() => { if (swiped) close(); }}
+        style={{
+          transform: `translateX(${offset}px)`,
+          transition: dragging.current ? 'none' : 'transform 0.25s cubic-bezier(0.25,1,0.5,1)',
+          background: 'var(--surface)',
+          padding: '14px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          touchAction: 'pan-y',
+        }}>
+        <div style={{ width: 38, height: 38, borderRadius: 10, background: (tx.category_color || '#888') + '20', border: `1.5px solid ${tx.category_color || '#888'}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: tx.category_color || 'var(--text-muted)' }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 3 }}>
+            {tx.description || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontWeight: 400 }}>No description</span>}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+            <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--border-2)', flexShrink: 0 }} />
+            <span style={{ fontSize: 11, color: tx.category_color || 'var(--text-muted)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{translateCategory(tx.category_name || 'Uncategorized')}</span>
+          </div>
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: tx.type === 'income' ? 'var(--green)' : 'var(--red)', letterSpacing: '-0.02em' }}>
+            {tx.type === 'income' ? '+' : '−'}{fmt(Number(tx.amount))}
+          </div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: tx.type === 'income' ? 'var(--green)' : 'var(--red)', opacity: 0.7, textTransform: 'capitalize', marginTop: 2 }}>{tx.type}</div>
+        </div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 18, opacity: swiped ? 0 : 0.25, transition: 'opacity 0.2s', flexShrink: 0 }}>‹</div>
+      </div>
+    </div>
+  );
+}
 
 interface Transaction {
   id: number; amount: number; type: string; description: string;
@@ -42,6 +162,7 @@ const MODAL_BOX: React.CSSProperties = {
 
 export default function TransactionsPage() {
   const { fmt } = useSettings();
+  const isMobile = useIsMobile();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -199,79 +320,93 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="table-wrap" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--border)' }}>
-              {['Date','Description','Category','Type','Amount',''].map((h, i) => (
-                <th key={i} style={{ padding: '13px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? Array.from({ length: 8 }).map((_, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                {[80, 160, 100, 70, 90, 60].map((w, j) => (
-                  <td key={j} style={{ padding: '14px 20px' }}><Skeleton w={w} h={12} /></td>
+      {/* Transaction list — swipeable cards on mobile, table on desktop */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+
+        {/* Loading skeletons */}
+        {loading && Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
+            <Skeleton w={38} h={38} r={10} />
+            <div style={{ flex: 1 }}><Skeleton h={13} /><Skeleton w="50%" h={10} /></div>
+            <Skeleton w={70} h={14} />
+          </div>
+        ))}
+
+        {/* Empty state */}
+        {!loading && paginated.length === 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '60px 24px' }}>
+            <div style={{ fontSize: 40, opacity: 0.12 }}>⇅</div>
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-soft)' }}>{search ? 'No matches found' : 'No transactions this month'}</p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{search ? 'Try a different search term' : 'Tap Add to get started'}</p>
+            {!search && (
+              <button onClick={openAdd} style={{ marginTop: 6, padding: '9px 20px', borderRadius: 9, fontSize: 13, fontWeight: 600, background: 'var(--accent)', color: 'white', border: 'none' }}>+ Add Transaction</button>
+            )}
+          </div>
+        )}
+
+        {/* Mobile: swipeable card list */}
+        {!loading && paginated.length > 0 && isMobile && (
+          <>
+            <div style={{ padding: '10px 16px 8px', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>← Swipe left to edit or delete</span>
+            </div>
+            {paginated.map(tx => (
+              <SwipeableRow
+                key={tx.id}
+                tx={tx}
+                fmt={fmt}
+                onEdit={() => openEdit(tx)}
+                onDelete={() => handleDelete(tx.id)}
+              />
+            ))}
+          </>
+        )}
+
+        {/* Desktop: full table */}
+        {!loading && paginated.length > 0 && !isMobile && (
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                {['Date','Description','Category','Type','Amount',''].map((h, i) => (
+                  <th key={i} style={{ padding: '13px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
-            )) : paginated.length === 0 ? (
-              <tr>
-                <td colSpan={6}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '60px 24px' }}>
-                    <div style={{ fontSize: 40, opacity: 0.12 }}>⇅</div>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-soft)' }}>{search ? 'No matches found' : 'No transactions this month'}</p>
-                    <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{search ? 'Try a different search term' : 'Press N or click Add to get started'}</p>
-                    {!search && (
-                      <button onClick={openAdd} style={{ marginTop: 6, padding: '9px 20px', borderRadius: 9, fontSize: 13, fontWeight: 600, background: 'var(--accent)', color: 'white', border: 'none' }}>+ Add Transaction</button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ) : paginated.map((tx, idx) => (
-              <tr key={tx.id}
-                style={{ borderBottom: idx < paginated.length-1 ? '1px solid var(--border)' : 'none', transition: 'background 0.1s ease', cursor: 'default' }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'}
-                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
-                <td style={{ padding: '13px 20px', fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
-                  {new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </td>
-                <td style={{ padding: '13px 20px', fontSize: 13, fontWeight: 500, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {tx.description || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No description</span>}
-                </td>
-                <td style={{ padding: '13px 20px' }}>
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 500,
-                    padding: '4px 9px', borderRadius: 6,
-                    background: `${tx.category_color}18`, color: tx.category_color || 'var(--text-muted)',
-                    border: `1px solid ${tx.category_color}28`,
-                  }}>
-                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: tx.category_color, flexShrink: 0 }} />
-                    {translateCategory(tx.category_name || 'Uncategorized')}
-                  </span>
-                </td>
-                <td style={{ padding: '13px 20px' }}>
-                  <span style={{
-                    fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 5,
-                    background: tx.type === 'income' ? 'var(--green-muted)' : 'var(--red-muted)',
-                    color: tx.type === 'income' ? 'var(--green)' : 'var(--red)',
-                    textTransform: 'capitalize',
-                  }}>{tx.type}</span>
-                </td>
-                <td style={{ padding: '13px 20px', fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13, color: tx.type === 'income' ? 'var(--green)' : 'var(--red)', whiteSpace: 'nowrap' }}>
-                  {tx.type === 'income' ? '+' : '−'}{fmt(Number(tx.amount))}
-                </td>
-                <td style={{ padding: '13px 20px' }}>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button onClick={() => openEdit(tx)} style={{ fontSize: 11, padding: '5px 10px', borderRadius: 6, background: 'var(--surface-3)', color: 'var(--text-soft)', border: '1px solid var(--border-2)', fontWeight: 500 }}>Edit</button>
-                    <button onClick={() => handleDelete(tx.id)} style={{ fontSize: 11, padding: '5px 10px', borderRadius: 6, background: 'var(--red-muted)', color: 'var(--red)', border: '1px solid rgba(240,82,82,0.2)', fontWeight: 500 }}>Del</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {paginated.map((tx, idx) => (
+                <tr key={tx.id}
+                  style={{ borderBottom: idx < paginated.length-1 ? '1px solid var(--border)' : 'none', transition: 'background 0.1s ease', cursor: 'default' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                  <td style={{ padding: '13px 20px', fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
+                    {new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </td>
+                  <td style={{ padding: '13px 20px', fontSize: 13, fontWeight: 500, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {tx.description || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No description</span>}
+                  </td>
+                  <td style={{ padding: '13px 20px' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 500, padding: '4px 9px', borderRadius: 6, background: tx.category_color + '18', color: tx.category_color || 'var(--text-muted)', border: '1px solid ' + tx.category_color + '28' }}>
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: tx.category_color, flexShrink: 0 }} />
+                      {translateCategory(tx.category_name || 'Uncategorized')}
+                    </span>
+                  </td>
+                  <td style={{ padding: '13px 20px' }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 5, background: tx.type === 'income' ? 'var(--green-muted)' : 'var(--red-muted)', color: tx.type === 'income' ? 'var(--green)' : 'var(--red)', textTransform: 'capitalize' }}>{tx.type}</span>
+                  </td>
+                  <td style={{ padding: '13px 20px', fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13, color: tx.type === 'income' ? 'var(--green)' : 'var(--red)', whiteSpace: 'nowrap' }}>
+                    {tx.type === 'income' ? '+' : '−'}{fmt(Number(tx.amount))}
+                  </td>
+                  <td style={{ padding: '13px 20px' }}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => openEdit(tx)} style={{ fontSize: 11, padding: '5px 10px', borderRadius: 6, background: 'var(--surface-3)', color: 'var(--text-soft)', border: '1px solid var(--border-2)', fontWeight: 500 }}>Edit</button>
+                      <button onClick={() => handleDelete(tx.id)} style={{ fontSize: 11, padding: '5px 10px', borderRadius: 6, background: 'var(--red-muted)', color: 'var(--red)', border: '1px solid rgba(240,82,82,0.2)', fontWeight: 500 }}>Del</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* Pagination */}
