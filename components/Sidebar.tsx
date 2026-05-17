@@ -18,6 +18,17 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
   more:          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>,
 };
 
+const NAV_SHORT_LABEL: Record<string, string> = {
+  overview:     'Home',
+  transactions: 'Txns',
+  budgets:      'Budgets',
+  savings:      'Savings',
+  scan:         'Scan',
+  analytics:    'Analytics',
+  categories:   'Categories',
+  settings:     'Settings',
+};
+
 const nav = [
   { href: '/dashboard',              label: 'Overview',     iconKey: 'overview',     desc: 'Summary & charts' },
   { href: '/dashboard/analytics',    label: 'Analytics',    iconKey: 'analytics',    desc: 'Deep insights' },
@@ -29,8 +40,8 @@ const nav = [
   { href: '/dashboard/settings',     label: 'Settings',     iconKey: 'settings',     desc: 'Preferences' },
 ];
 
-// Bottom nav: 4 primary + "more"
-const BOTTOM_PRIMARY = ['overview', 'analytics', 'transactions', 'scan'];
+// Bottom nav: 5 primary tabs — most-used pages front and center
+const BOTTOM_PRIMARY = ['overview', 'transactions', 'budgets', 'savings', 'scan'];
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -182,28 +193,35 @@ export default function Sidebar() {
             return (
               <Link key={item.href} href={item.href} style={{
                 flex: 1, display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center', gap: 4,
+                alignItems: 'center', justifyContent: 'center', gap: 3,
                 textDecoration: 'none', position: 'relative',
-                color: active ? 'var(--accent-2)' : 'var(--text-muted)',
+                color: active ? 'var(--accent)' : 'var(--text-muted)',
                 transition: 'color 0.15s ease',
+                minWidth: 0,
               }}>
-                {active && <span style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 32, height: 2, borderRadius: '0 0 2px 2px', background: 'var(--accent)' }} />}
-                {item.highlight && !active && <span style={{ position: 'absolute', top: 10, right: 'calc(50% - 18px)', width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />}
-                <span style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: active ? 'scale(1.12)' : 'scale(1)', transition: 'transform 0.2s cubic-bezier(0.34,1.3,0.64,1)' }}>{NAV_ICONS[item.iconKey]}</span>
-                <span style={{ fontSize: 10, fontWeight: active ? 600 : 400 }}>{item.label}</span>
+                {active && <span style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 28, height: 2.5, borderRadius: '0 0 3px 3px', background: 'var(--accent)' }} />}
+                {item.highlight && !active && <span style={{ position: 'absolute', top: 10, right: 'calc(50% - 16px)', width: 5, height: 5, borderRadius: '50%', background: 'var(--accent)' }} />}
+                <span style={{
+                  width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transform: active ? 'scale(1.15)' : 'scale(1)',
+                  transition: 'transform 0.22s cubic-bezier(0.34,1.3,0.64,1)',
+                }}>{NAV_ICONS[item.iconKey]}</span>
+                <span style={{ fontSize: 9.5, fontWeight: active ? 700 : 400, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', paddingInline: 2 }}>
+                  {NAV_SHORT_LABEL[item.iconKey] ?? item.label}
+                </span>
               </Link>
             );
           })}
           {/* More button */}
           <button onClick={() => setMoreOpen(v => !v)} style={{
             flex: 1, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', gap: 4,
+            alignItems: 'center', justifyContent: 'center', gap: 3,
             background: 'none', border: 'none',
-            color: moreOpen ? 'var(--accent-2)' : 'var(--text-muted)',
-            transition: 'color 0.15s ease', padding: 0,
+            color: moreOpen ? 'var(--accent)' : 'var(--text-muted)',
+            transition: 'color 0.15s ease', padding: 0, minWidth: 0,
           }}>
-            <span style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{NAV_ICONS.more}</span>
-            <span style={{ fontSize: 10, fontWeight: moreOpen ? 600 : 400 }}>More</span>
+            <span style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{NAV_ICONS.more}</span>
+            <span style={{ fontSize: 9.5, fontWeight: moreOpen ? 700 : 400 }}>More</span>
           </button>
         </nav>
       </>
