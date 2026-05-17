@@ -394,162 +394,169 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── Budget + Savings Overview Row ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        {/* Budget Overview */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 2 }}>Budgets</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Spending limits this month</div>
-            </div>
-            <a href="/dashboard/budgets" style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, opacity: 0.8 }}>Details →</a>
-          </div>
-          {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <Skeleton h={6} r={99} />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                {[1, 2, 3, 4].map(i => <Skeleton key={i} h={52} r={9} />)}
+      {/* ── Desktop two-column / Mobile stacked layout ── */}
+      <div className="overview-desktop-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 14, alignItems: 'start' }}>
+
+        {/* LEFT COLUMN: trend chart + recent transactions */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+
+          {/* Trend Chart */}
+          <div className="scroll-reveal animate-fadeUp stagger-1" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em' }}>Income vs Expenses</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Last 6 months trend</div>
+              </div>
+              <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 8, height: 2, background: '#22d47a', display: 'inline-block', borderRadius: 2 }} />Income</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 8, height: 2, background: '#f05252', display: 'inline-block', borderRadius: 2 }} />Expenses</span>
               </div>
             </div>
-          ) : <BudgetOverviewStrip budgets={budgets} fmt={fmt} />}
-        </div>
-
-        {/* Savings Overview */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 2 }}>Savings Goals</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Progress across all goals</div>
-            </div>
-            <a href="/dashboard/savings" style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, opacity: 0.8 }}>Details →</a>
-          </div>
-          {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <Skeleton h={6} r={99} />
-              <div style={{ display: 'flex', gap: 8 }}>{[1, 2].map(i => <Skeleton key={i} h={52} r={10} />)}</div>
-            </div>
-          ) : <SavingsOverviewStrip goals={savingsGoals} fmt={fmt} />}
-        </div>
-      </div>
-
-      {/* ── Charts Row ── */}
-      <div className="charts-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 12 }}>
-        {/* Trend Chart */}
-        <div className="scroll-reveal animate-fadeUp stagger-1 chart-container-lg" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 18px', minHeight: 260 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em' }}>Income vs Expenses</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Last 6 months trend</div>
-            </div>
-            <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 8, height: 2, background: '#22d47a', display: 'inline-block', borderRadius: 2 }} />Income</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 8, height: 2, background: '#f05252', display: 'inline-block', borderRadius: 2 }} />Expenses</span>
-            </div>
-          </div>
-          {loading ? <Skeleton h={180} /> : (
-            <ResponsiveContainer key={chartKey} width="100%" height={180}>
-              <AreaChart data={trendData} margin={{ left: -10, right: 0, top: 4, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="gI" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#22d47a" stopOpacity={0.2} />
-                    <stop offset="100%" stopColor="#22d47a" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="gE" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f05252" stopOpacity={0.15} />
-                    <stop offset="100%" stopColor="#f05252" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="month" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => fmtShort(v)} />
-                <Tooltip contentStyle={{ background: 'var(--surface-2)', border: '1px solid var(--border-2)', borderRadius: 10, fontSize: 12 }} labelStyle={{ color: 'var(--text)', fontWeight: 600, marginBottom: 4 }} formatter={(v) => fmt(Number(v))} />
-                <Area type="monotone" dataKey="income" stroke="#22d47a" strokeWidth={2} fill="url(#gI)" name="Income" dot={false} isAnimationActive animationDuration={900} animationEasing="ease-out" />
-                <Area type="monotone" dataKey="expenses" stroke="#f05252" strokeWidth={2} fill="url(#gE)" name="Expenses" dot={false} isAnimationActive animationDuration={900} animationEasing="ease-out" />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-
-        {/* By Category */}
-        <div className="scroll-reveal animate-fadeUp stagger-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 18px' }}>
-          <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 4 }}>By Category</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14 }}>Spending breakdown</div>
-          {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <Skeleton h={140} r={10} />
-              {[1, 2, 3].map(i => <Skeleton key={i} h={14} />)}
-            </div>
-          ) : categoryData.length ? (
-            <>
-              <ResponsiveContainer key={chartKey} width="100%" height={130}>
-                <PieChart>
-                  <Pie data={categoryData} dataKey="total" nameKey="name" cx="50%" cy="50%" innerRadius={34} outerRadius={56} paddingAngle={3} startAngle={90} endAngle={-270} isAnimationActive animationDuration={800} animationEasing="ease-out">
-                    {categoryData.map((entry, i) => <Cell key={i} fill={entry.color || '#5b6ef5'} />)}
-                  </Pie>
-                  <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ background: 'var(--surface-2)', border: '1px solid var(--border-2)', borderRadius: 10, fontSize: 12 }} />
-                </PieChart>
+            {loading ? <Skeleton h={200} /> : (
+              <ResponsiveContainer key={chartKey} width="100%" height={200}>
+                <AreaChart data={trendData} margin={{ left: -10, right: 0, top: 4, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gI" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#22d47a" stopOpacity={0.2} />
+                      <stop offset="100%" stopColor="#22d47a" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="gE" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f05252" stopOpacity={0.15} />
+                      <stop offset="100%" stopColor="#f05252" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="month" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => fmtShort(v)} />
+                  <Tooltip contentStyle={{ background: 'var(--surface-2)', border: '1px solid var(--border-2)', borderRadius: 10, fontSize: 12 }} labelStyle={{ color: 'var(--text)', fontWeight: 600, marginBottom: 4 }} formatter={(v) => fmt(Number(v))} />
+                  <Area type="monotone" dataKey="income" stroke="#22d47a" strokeWidth={2} fill="url(#gI)" name="Income" dot={false} isAnimationActive animationDuration={900} animationEasing="ease-out" />
+                  <Area type="monotone" dataKey="expenses" stroke="#f05252" strokeWidth={2} fill="url(#gE)" name="Expenses" dot={false} isAnimationActive animationDuration={900} animationEasing="ease-out" />
+                </AreaChart>
               </ResponsiveContainer>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-                {categoryData.slice(0, 5).map((c, i) => (
-                  <div key={i} className={`animate-slideInLeft stagger-${i + 1}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                      <div style={{ width: 7, height: 7, borderRadius: '50%', background: c.color || '#5b6ef5', flexShrink: 0 }} />
-                      <span style={{ color: 'var(--text-soft)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110 }}>{c.name}</span>
-                    </div>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, fontSize: 11, color: 'var(--text)' }}>{fmt(c.total)}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 160, gap: 8 }}>
-              <div style={{ fontSize: 32, opacity: 0.15 }}>◎</div>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>No spending data yet</p>
-            </div>
-          )}
-        </div>
-      </div>
+            )}
+          </div>
 
-      {/* ── Recent Transactions ── */}
-      <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
-        <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em' }}>Recent Transactions</div>
-          <a href="/dashboard/transactions" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}>View all →</a>
-        </div>
-        {loading ? (
-          Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 18px', borderBottom: '1px solid var(--border)' }}>
-              <Skeleton w={36} h={36} r={10} />
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}><Skeleton w={160} h={11} /><Skeleton w={100} h={9} /></div>
-              <Skeleton w={70} h={12} />
+          {/* Recent Transactions */}
+          <div className="scroll-reveal" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em' }}>Recent Transactions</div>
+              <a href="/dashboard/transactions" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}>View all →</a>
             </div>
-          ))
-        ) : recentTx.length === 0 ? (
-          <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '40px 18px' }}>
-            <div style={{ fontSize: 36, opacity: 0.12 }}>⇅</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-soft)' }}>No transactions this month</div>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Add your first transaction to get started</p>
-            <button onClick={openQuickAdd} className="btn-ripple" style={{ marginTop: 4, padding: '9px 20px', borderRadius: 9, fontSize: 13, fontWeight: 600, background: 'var(--accent)', color: 'white', border: 'none' }}>+ Add Transaction</button>
-          </div>
-        ) : recentTx.map((tx, idx) => (
-          <div key={tx.id} className={`animate-slideInLeft stagger-${Math.min(idx + 1, 8)}`}
-            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: idx < recentTx.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.14s ease', cursor: 'default' }}
-            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'}
-            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
-            <div style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: `${tx.category_color}22`, border: `1px solid ${tx.category_color}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: tx.category_color || 'var(--accent)' }}>
-              {translateCategory(tx.category_name)?.[0] || '?'}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description || 'No description'}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                {translateCategory(tx.category_name)} · {new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 18px', borderBottom: '1px solid var(--border)' }}>
+                  <Skeleton w={36} h={36} r={10} />
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}><Skeleton w={160} h={11} /><Skeleton w={100} h={9} /></div>
+                  <Skeleton w={70} h={12} />
+                </div>
+              ))
+            ) : recentTx.length === 0 ? (
+              <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '40px 18px' }}>
+                <div style={{ fontSize: 36, opacity: 0.12 }}>⇅</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-soft)' }}>No transactions this month</div>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Add your first transaction to get started</p>
+                <button onClick={openQuickAdd} className="btn-ripple" style={{ marginTop: 4, padding: '9px 20px', borderRadius: 9, fontSize: 13, fontWeight: 600, background: 'var(--accent)', color: 'white', border: 'none' }}>+ Add Transaction</button>
               </div>
-            </div>
-            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13, color: tx.type === 'income' ? 'var(--green)' : 'var(--red)', whiteSpace: 'nowrap' }}>
-              {tx.type === 'income' ? '+' : '−'}{fmt(Number(tx.amount))}
-            </span>
+            ) : recentTx.map((tx, idx) => (
+              <div key={tx.id} className={`animate-slideInLeft stagger-${Math.min(idx + 1, 8)}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: idx < recentTx.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.14s ease' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                <div style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: `${tx.category_color}22`, border: `1px solid ${tx.category_color}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: tx.category_color || 'var(--accent)' }}>
+                  {translateCategory(tx.category_name)?.[0] || '?'}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description || 'No description'}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                    {translateCategory(tx.category_name)} · {new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </div>
+                </div>
+                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13, color: tx.type === 'income' ? 'var(--green)' : 'var(--red)', whiteSpace: 'nowrap' }}>
+                  {tx.type === 'income' ? '+' : '−'}{fmt(Number(tx.amount))}
+                </span>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
+
+        {/* RIGHT COLUMN: category pie + budgets + savings */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+
+          {/* By Category */}
+          <div className="scroll-reveal animate-fadeUp stagger-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 18px' }}>
+            <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 4 }}>By Category</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14 }}>Spending breakdown</div>
+            {loading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Skeleton h={130} r={10} />
+                {[1, 2, 3].map(i => <Skeleton key={i} h={14} />)}
+              </div>
+            ) : categoryData.length ? (
+              <>
+                <ResponsiveContainer key={chartKey} width="100%" height={130}>
+                  <PieChart>
+                    <Pie data={categoryData} dataKey="total" nameKey="name" cx="50%" cy="50%" innerRadius={34} outerRadius={56} paddingAngle={3} startAngle={90} endAngle={-270} isAnimationActive animationDuration={800} animationEasing="ease-out">
+                      {categoryData.map((entry, i) => <Cell key={i} fill={entry.color || '#5b6ef5'} />)}
+                    </Pie>
+                    <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ background: 'var(--surface-2)', border: '1px solid var(--border-2)', borderRadius: 10, fontSize: 12 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 8 }}>
+                  {categoryData.slice(0, 5).map((c, i) => (
+                    <div key={i} className={`animate-slideInLeft stagger-${i + 1}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: c.color || '#5b6ef5', flexShrink: 0 }} />
+                        <span style={{ color: 'var(--text-soft)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 130 }}>{c.name}</span>
+                      </div>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, fontSize: 11, color: 'var(--text)' }}>{fmt(c.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 130, gap: 8 }}>
+                <div style={{ fontSize: 28, opacity: 0.15 }}>◎</div>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>No spending data yet</p>
+              </div>
+            )}
+          </div>
+
+          {/* Budget Overview */}
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 2 }}>Budgets</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Spending limits this month</div>
+              </div>
+              <a href="/dashboard/budgets" style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, opacity: 0.8 }}>Details →</a>
+            </div>
+            {loading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Skeleton h={6} r={99} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  {[1, 2, 3, 4].map(i => <Skeleton key={i} h={48} r={9} />)}
+                </div>
+              </div>
+            ) : <BudgetOverviewStrip budgets={budgets} fmt={fmt} />}
+          </div>
+
+          {/* Savings Overview */}
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 2 }}>Savings Goals</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Progress across all goals</div>
+              </div>
+              <a href="/dashboard/savings" style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, opacity: 0.8 }}>Details →</a>
+            </div>
+            {loading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Skeleton h={6} r={99} />
+                <div style={{ display: 'flex', gap: 8 }}>{[1, 2].map(i => <Skeleton key={i} h={52} r={10} />)}</div>
+              </div>
+            ) : <SavingsOverviewStrip goals={savingsGoals} fmt={fmt} />}
+          </div>
+
+        </div>
       </div>
 
       {/* ── Quick Add Modal ── */}

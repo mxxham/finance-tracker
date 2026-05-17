@@ -300,11 +300,28 @@ button:active:not(:disabled) { transform: scale(0.96) !important; }
   margin: 0 auto;
 }
 
-/* ── Tablet (768px – 1023px) ── */
+/* ── Overview desktop two-column grid ── */
+.overview-desktop-grid {
+  grid-template-columns: 1fr 340px !important;
+}
+
 @media (max-width: 1023px) {
+  .overview-desktop-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .overview-desktop-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}
+
+
   :root { --sidebar-w: 60px; }
   .dashboard-content { padding: 28px 24px; }
-}
+
 
 /* ── Mobile (< 768px) ── */
 @media (max-width: 767px) {
@@ -630,4 +647,3 @@ button:active:not(:disabled) { transform: scale(0.96) !important; }
     grid-template-columns: repeat(2, 1fr) !important;
   }
 }
-
