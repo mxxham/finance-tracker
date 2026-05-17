@@ -15,20 +15,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <link rel="manifest" href="/manifest.json" />
-      <meta name="theme-color" content="#5b6ef5" />
-      <meta name="mobile-web-app-capable" content="yes" />
-      <meta name="apple-mobile-web-app-capable" content="yes" />
-      <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-      <meta name="apple-mobile-web-app-title" content="FinTrack" />
-      <link rel="apple-touch-icon" href="/icon-192.png" />
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <meta name="theme-color" content="#5b6ef5" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="FinTrack" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className="antialiased">
-        <ClientLayout>
-          <ServiceWorkerRegistrar />
-          <AuthProvider><SettingsProvider>{children}</SettingsProvider></AuthProvider>
-        </ClientLayout>
+        <AuthProvider>
+          <SettingsProvider>
+            <ClientLayout>
+              <ServiceWorkerRegistrar />
+              {children}
+            </ClientLayout>
+          </SettingsProvider>
+        </AuthProvider>
       </body>
     </html>
   );
