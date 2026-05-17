@@ -286,6 +286,8 @@ export default function BudgetsPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'insights' | 'trends' | 'recurring'>('overview');
   const [expandedCard, setExpandedCard] = useState<number | null>(null);
+  const [rolloverLoading, setRolloverLoading] = useState(false);
+  const [rolloverDismissed, setRolloverDismissed] = useState(false);
 
 
 
@@ -362,7 +364,7 @@ export default function BudgetsPage() {
     finally { setLoading(false); }
   }, [month, year]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); setRolloverDismissed(false); }, [load]);
 
   // ── Handlers ──
   const handleSave = async () => {
@@ -377,6 +379,41 @@ export default function BudgetsPage() {
     if (!confirm('Delete this budget?')) return;
     try { await api.deleteBudget(id); showToast('Budget deleted', 'info'); load(); }
     catch { showToast('Failed to delete', 'error'); }
+  };
+
+  // ── Rollover: copy prev month budgets to current month ──
+  // Which prev month categories are NOT yet set up this month
+  const missingFromPrev = prevBudgets.filter(
+    pb => !budgets.some(b => b.category_id === pb.category_id)
+  );
+  const canRollover = prevBudgets.length > 0 && missingFromPrev.length > 0;
+  const prevMonthLabel = MONTHS[month === 1 ? 11 : month - 2];
+
+  const handleRollover = async (selectedIds?: number[]) => {
+    const toRoll = selectedIds
+      ? missingFromPrev.filter(pb => selectedIds.includes(pb.category_id))
+      : missingFromPrev;
+    if (!toRoll.length) return;
+    setRolloverLoading(true);
+    try {
+      await Promise.all(
+        toRoll.map(pb =>
+          api.createBudget({
+            category_id: String(pb.category_id),
+            amount: Number(pb.amount),
+            month,
+            year,
+          })
+        )
+      );
+      showToast(`Copied ${toRoll.length} budget${toRoll.length > 1 ? 's' : ''} from ${prevMonthLabel}`);
+      setRolloverDismissed(false);
+      load();
+    } catch {
+      showToast('Failed to copy budgets', 'error');
+    } finally {
+      setRolloverLoading(false);
+    }
   };
 
   // ── Rule-based suggestions ──
@@ -501,6 +538,18 @@ export default function BudgetsPage() {
           <select value={year} onChange={e => setYear(Number(e.target.value))} style={{ width: 78, fontSize: 13 }}>
             {[2023, 2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
+          {!loading && canRollover && (
+            <button
+              onClick={() => handleRollover()}
+              disabled={rolloverLoading}
+              style={{ padding: '10px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'var(--surface)', color: 'var(--text-soft)', border: '1px solid var(--border-2)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 7, opacity: rolloverLoading ? 0.6 : 1, cursor: rolloverLoading ? 'not-allowed' : 'pointer' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/>
+                <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+              </svg>
+              {rolloverLoading ? 'Copying…' : `Copy from ${prevMonthLabel}`}
+            </button>
+          )}
           <button
             onClick={() => { setForm({ category_id: '', amount: '' }); setShowModal(true); }}
             style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)', whiteSpace: 'nowrap' }}>
@@ -508,6 +557,67 @@ export default function BudgetsPage() {
           </button>
         </div>
       </div>
+
+      {/* ── Rollover Banner ── */}
+      {!loading && canRollover && !rolloverDismissed && (
+        <div style={{ background: 'var(--surface)', border: '1.5px solid rgba(91,110,245,0.25)', borderRadius: 14, padding: '14px 18px', display: 'flex', gap: 14, alignItems: 'flex-start', position: 'relative' }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(91,110,245,0.12)', border: '1.5px solid rgba(91,110,245,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--accent)' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/>
+              <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+            </svg>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>
+              {budgets.length === 0
+                ? `No budgets set for ${MONTH_FULL[month - 1]} yet`
+                : `${missingFromPrev.length} budget${missingFromPrev.length > 1 ? 's' : ''} from ${prevMonthLabel} not copied yet`}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.5 }}>
+              {prevMonthLabel} had <strong style={{ color: 'var(--text-soft)' }}>{prevBudgets.length} budget{prevBudgets.length > 1 ? 's' : ''}</strong> set up.
+              {' '}Copy them all to {MONTH_FULL[month - 1]}, or pick individual ones below.
+            </div>
+            {/* Individual category chips */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+              {missingFromPrev.map(pb => (
+                <button
+                  key={pb.category_id}
+                  onClick={() => handleRollover([pb.category_id])}
+                  disabled={rolloverLoading}
+                  title={`Copy ${translateCategory(pb.category_name)} budget (${fmt(Number(pb.amount))})`}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: pb.category_color + '18', color: pb.category_color, border: `1px solid ${pb.category_color}30`, cursor: 'pointer', opacity: rolloverLoading ? 0.5 : 1 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: pb.category_color, flexShrink: 0 }} />
+                  {translateCategory(pb.category_name)}
+                  <span style={{ opacity: 0.7, fontFamily: 'var(--font-mono)', fontSize: 10 }}>{fmt(Number(pb.amount))}</span>
+                </button>
+              ))}
+            </div>
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => handleRollover()}
+                disabled={rolloverLoading}
+                style={{ padding: '8px 16px', borderRadius: 9, fontSize: 12, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', cursor: 'pointer', opacity: rolloverLoading ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/>
+                  <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+                </svg>
+                {rolloverLoading ? 'Copying…' : `Copy all ${missingFromPrev.length} from ${prevMonthLabel}`}
+              </button>
+              <button
+                onClick={() => setRolloverDismissed(true)}
+                style={{ padding: '8px 14px', borderRadius: 9, fontSize: 12, fontWeight: 600, background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', cursor: 'pointer' }}>
+                Dismiss
+              </button>
+            </div>
+          </div>
+          <button
+            onClick={() => setRolloverDismissed(true)}
+            style={{ position: 'absolute', top: 12, right: 14, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: 4 }}>
+            &times;
+          </button>
+        </div>
+      )}
 
       {/* ── Empty State ── */}
       {emptyState && (

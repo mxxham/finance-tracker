@@ -189,14 +189,20 @@ export default function TransactionsPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ amount: '', type: 'expense', description: '', date: now.toISOString().split('T')[0], category_id: '' });
+  const [budgets, setBudgets] = useState<{ id: number; amount: number; spent: number; category_id: number; category_name: string; category_color: string }[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const params: Record<string, string> = { month: String(month), year: String(year), limit: '500' };
       if (filterType) params.type = filterType;
-      const [t, c] = await Promise.all([api.getTransactions(params), api.getCategories()]);
+      const [t, c, b] = await Promise.all([
+        api.getTransactions(params),
+        api.getCategories(),
+        api.getBudgets({ month: String(month), year: String(year) }).catch(() => []),
+      ]);
       setTxs(t); setCategories(c); setPage(1);
+      setBudgets(Array.isArray(b) ? b : []);
     } catch { showToast('Failed to load', 'error'); }
     finally { setLoading(false); }
   }, [month, year, filterType]);
@@ -443,7 +449,21 @@ export default function TransactionsPage() {
       )}
 
       {/* Modal */}
-      {showModal && (
+      {showModal && (() => {
+        // Compute budget impact for the selected category when adding an expense
+        const selectedBudget = form.type === 'expense' && form.category_id
+          ? budgets.find(b => b.category_id === Number(form.category_id))
+          : null;
+        const addAmount = Number(form.amount) || 0;
+        const newSpent = selectedBudget ? Number(selectedBudget.spent) + addAmount : 0;
+        const budgetLimit = selectedBudget ? Number(selectedBudget.amount) : 0;
+        const newPct = budgetLimit > 0 ? (newSpent / budgetLimit) * 100 : 0;
+        const currentPct = budgetLimit > 0 ? (Number(selectedBudget?.spent ?? 0) / budgetLimit) * 100 : 0;
+        const wouldExceed = selectedBudget && !editTx && newSpent > budgetLimit;
+        const wouldWarn = selectedBudget && !editTx && newPct >= 80 && !wouldExceed;
+        const alreadyOver = selectedBudget && currentPct >= 100;
+
+        return (
         <div style={MODAL_STYLE} onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
           <div style={MODAL_BOX}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border-2)', margin: '0 auto 4px' }} />
@@ -482,15 +502,59 @@ export default function TransactionsPage() {
                 <input type="date" value={form.date} onChange={e => setForm(f=>({...f,date:e.target.value}))} />
               </div>
             </div>
+
+            {/* Budget impact alert — shown live as user types amount + picks category */}
+            {selectedBudget && addAmount > 0 && !editTx && (
+              <div style={{
+                padding: '11px 14px', borderRadius: 10,
+                background: wouldExceed ? 'rgba(240,82,82,0.08)' : wouldWarn ? 'rgba(245,166,35,0.08)' : 'rgba(34,212,122,0.06)',
+                border: `1.5px solid ${wouldExceed ? 'rgba(240,82,82,0.3)' : wouldWarn ? 'rgba(245,166,35,0.3)' : 'rgba(34,212,122,0.2)'}`,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 7 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                    stroke={wouldExceed ? 'var(--red)' : wouldWarn ? 'var(--amber)' : 'var(--green)'}
+                    strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    {wouldExceed || wouldWarn
+                      ? <><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>
+                      : <polyline points="20 6 9 17 4 12"/>
+                    }
+                  </svg>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: wouldExceed ? 'var(--red)' : wouldWarn ? 'var(--amber)' : 'var(--green)' }}>
+                    {alreadyOver
+                      ? `${translateCategory(selectedBudget.category_name)} is already over budget`
+                      : wouldExceed
+                      ? `This will exceed your ${translateCategory(selectedBudget.category_name)} budget`
+                      : wouldWarn
+                      ? `${translateCategory(selectedBudget.category_name)} will reach ${newPct.toFixed(0)}% of budget`
+                      : `Within ${translateCategory(selectedBudget.category_name)} budget`}
+                  </span>
+                </div>
+                {/* Mini progress bar: before → after */}
+                <div style={{ height: 6, borderRadius: 99, background: 'var(--surface-2)', overflow: 'visible', position: 'relative', marginBottom: 6 }}>
+                  {/* Current spent */}
+                  <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', borderRadius: 99, width: `${Math.min(currentPct, 100)}%`, background: 'var(--border-2)', transition: 'width 0.4s ease' }} />
+                  {/* New amount being added */}
+                  {!alreadyOver && (
+                    <div style={{ position: 'absolute', top: 0, left: `${Math.min(currentPct, 100)}%`, height: '100%', borderRadius: '0 99px 99px 0', width: `${Math.min(newPct - currentPct, 100 - currentPct)}%`, background: wouldExceed ? 'var(--red)' : wouldWarn ? 'var(--amber)' : 'var(--green)', opacity: 0.8, transition: 'width 0.3s ease' }} />
+                  )}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)' }}>
+                  <span>After: <strong style={{ color: wouldExceed ? 'var(--red)' : 'var(--text-soft)', fontFamily: 'var(--font-mono)' }}>{fmt(newSpent)}</strong></span>
+                  <span>Budget: <strong style={{ fontFamily: 'var(--font-mono)' }}>{fmt(budgetLimit)}</strong> ({newPct.toFixed(0)}%)</span>
+                </div>
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
               <button onClick={() => setShowModal(false)} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Cancel</button>
-              <button onClick={handleSave} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)' }}>
-                {editTx ? 'Save Changes' : 'Add Transaction'}
+              <button onClick={handleSave} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: wouldExceed ? 'var(--red)' : 'var(--accent)', color: 'white', border: 'none', boxShadow: `0 4px 16px ${wouldExceed ? 'rgba(240,82,82,0.35)' : 'rgba(91,110,245,0.3)'}`, transition: 'all 0.2s ease' }}>
+                {wouldExceed ? '⚠ Add Anyway' : editTx ? 'Save Changes' : 'Add Transaction'}
               </button>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
