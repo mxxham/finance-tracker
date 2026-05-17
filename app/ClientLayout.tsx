@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
+import { useEffect, useState } from 'react';
 
 // Full-screen loading skeleton shown on first app paint before auth resolves
 function AppLoadingSkeleton() {
@@ -19,7 +20,6 @@ function AppLoadingSkeleton() {
         display: 'flex', flexDirection: 'column', gap: 8,
         flexShrink: 0,
       }}>
-        {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 4px', marginBottom: 16 }}>
           <div style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--accent)', opacity: 0.9 }} />
           <div style={{ flex: 1 }}>
@@ -27,7 +27,6 @@ function AppLoadingSkeleton() {
             <div className="skeleton" style={{ height: 9, width: 100, borderRadius: 4 }} />
           </div>
         </div>
-        {/* Nav items */}
         {[40, 60, 50, 55, 45, 50].map((w, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10 }}>
             <div className="skeleton" style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0 }} />
@@ -35,10 +34,7 @@ function AppLoadingSkeleton() {
           </div>
         ))}
       </div>
-
-      {/* Main content skeleton */}
       <div style={{ flex: 1, padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 16, overflow: 'hidden' }}>
-        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
           <div>
             <div className="skeleton" style={{ height: 28, width: 160, borderRadius: 6, marginBottom: 8 }} />
@@ -50,8 +46,6 @@ function AppLoadingSkeleton() {
             <div className="skeleton" style={{ height: 36, width: 72, borderRadius: 9 }} />
           </div>
         </div>
-
-        {/* Stat cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
           {[1, 2, 3, 4].map(i => (
             <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 16 }}>
@@ -61,8 +55,6 @@ function AppLoadingSkeleton() {
             </div>
           ))}
         </div>
-
-        {/* Charts row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 12 }}>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20 }}>
             <div className="skeleton" style={{ height: 14, width: 140, borderRadius: 4, marginBottom: 8 }} />
@@ -76,8 +68,6 @@ function AppLoadingSkeleton() {
             {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 11, borderRadius: 4, marginBottom: 8 }} />)}
           </div>
         </div>
-
-        {/* Recent transactions */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
             <div className="skeleton" style={{ height: 13, width: 140, borderRadius: 4 }} />
@@ -98,14 +88,20 @@ function AppLoadingSkeleton() {
   );
 }
 
-export default function ClientLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+// Separate inner component so useAuth() is only called after AuthProvider mounts
+// This prevents the SSR crash on /_not-found and other non-dashboard routes
+function AuthAwareLayout({ children, pathname }: { children: React.ReactNode; pathname: string }) {
   const { loading } = useAuth();
-
-  // Show full skeleton on very first paint (auth check in progress)
-  // Only on dashboard routes — auth page handles its own loading
   const isDashboard = pathname?.startsWith('/dashboard');
   if (loading && isDashboard) return <AppLoadingSkeleton />;
+  return <>{children}</>;
+}
+
+export default function ClientLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  // Suppress hydration mismatch — only render auth-aware content client-side
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
     <AnimatePresence mode="wait">
@@ -116,7 +112,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         exit={{ opacity: 0, x: -20 }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
       >
-        {children}
+        {mounted
+          ? <AuthAwareLayout pathname={pathname ?? ''}>{children}</AuthAwareLayout>
+          : children
+        }
       </motion.div>
     </AnimatePresence>
   );
