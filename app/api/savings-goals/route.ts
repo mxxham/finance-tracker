@@ -60,9 +60,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(goals.rows);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal server error';
-    return NextResponse.json({ error: message }, { status: message === 'Unauthorized' ? 401 : 500 });
+    const status = message === 'Unauthorized' ? 401 : 500;
+    return NextResponse.json(
+      {
+        error: message,
+        ...(status === 401 ? { hint: 'Missing or invalid Authorization: Bearer <token>' } : null),
+      },
+      { status }
+    );
   }
 }
+
 
 export async function POST(req: NextRequest) {
   try {

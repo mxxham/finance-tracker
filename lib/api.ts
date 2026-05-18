@@ -1,8 +1,12 @@
 const BASE = '/api';
 
 function getToken() {
-  return typeof window !== 'undefined' ? localStorage.getItem('ft_token') : null;
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('ft_token');
 }
+
+
+
 
 function headers(extra?: Record<string, string>) {
   const token = getToken();
@@ -14,14 +18,32 @@ function headers(extra?: Record<string, string>) {
 }
 
 async function request(path: string, options?: RequestInit) {
+  const token = getToken();
+
+  // Prevent a guaranteed 401 if we already know the token is missing.
+    if (!token && typeof window !== 'undefined') {
+    const err = new Error('Unauthorized: missing token');
+    (err as { code?: string }).code = 'NO_TOKEN';
+    throw err;
+  }
+
+
   const res = await fetch(`${BASE}${path}`, {
     ...options,
     headers: { ...headers(), ...((options?.headers as Record<string, string>) || {}) },
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Request failed');
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error || 'Request failed');
+    (err as { status?: number }).status = res.status;
+    throw err;
+
+  }
+
   return data;
 }
+
 
 export const api = {
   getTransactions: (params?: Record<string, string>) => {
