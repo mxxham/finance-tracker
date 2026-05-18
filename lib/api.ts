@@ -20,9 +20,11 @@ function headers(extra?: Record<string, string>) {
 async function request(path: string, options?: RequestInit) {
   const token = getToken();
 
-  // If we have no token on the client, throw a structured error.
-  // Avoid relying on ad-hoc message matching elsewhere.
+  // If we have no token on the client, redirect to login immediately
   if (!token && typeof window !== 'undefined') {
+    localStorage.removeItem('ft_token');
+    localStorage.removeItem('ft_user');
+    window.location.href = '/';
     const err = new Error('Unauthorized: missing token');
     (err as { code?: string }).code = 'NO_TOKEN';
     (err as { status?: number }).status = 401;
@@ -35,11 +37,20 @@ async function request(path: string, options?: RequestInit) {
   });
 
   const data = await res.json().catch(() => ({}));
+
+  // If the server returns 401 (token expired / invalid JWT_SECRET mismatch),
+  // clear local storage and redirect to login so the user isn't stuck
+  if (res.status === 401 && typeof window !== 'undefined') {
+    localStorage.removeItem('ft_token');
+    localStorage.removeItem('ft_user');
+    window.location.href = '/';
+    throw new Error('Session expired. Please sign in again.');
+  }
+
   if (!res.ok) {
     const err = new Error(data.error || 'Request failed');
     (err as { status?: number }).status = res.status;
     throw err;
-
   }
 
   return data;

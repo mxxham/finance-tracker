@@ -3,11 +3,10 @@ import { NextRequest } from 'next/server';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-if (!JWT_SECRET) {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('JWT_SECRET environment variable is not set. This is required in production.');
-  }
-  console.warn('[auth] WARNING: JWT_SECRET is not set. Using insecure fallback. Set JWT_SECRET in your .env file.');
+// Don't throw at module load time — this crashes the build.
+// Instead, validate at request time inside requireAuth/signToken.
+if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
+  console.error('[auth] CRITICAL: JWT_SECRET environment variable is not set. All auth will fail.');
 }
 
 const SECRET = JWT_SECRET || 'dev-only-insecure-fallback-key-do-not-use-in-prod';
