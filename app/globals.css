@@ -318,6 +318,13 @@ button:active:not(:disabled) { transform: scale(0.96) !important; }
   }
 }
 
+
+/* ── Tablet collapsed sidebar ── */
+@media (min-width: 768px) and (max-width: 1023px) {
+  :root { --sidebar-w: 60px; }
+  .dashboard-content { padding: 28px 24px; }
+}
+
 /* ── Mobile (< 768px) ── */
 @media (max-width: 767px) {
   :root { --sidebar-w: 0px; }
