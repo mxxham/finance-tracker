@@ -67,7 +67,49 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </div>
   );
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 14,
+          background: 'var(--bg)',
+          padding: 24,
+          textAlign: 'center',
+        }}
+      >
+        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Unauthorized / Session expired</div>
+        <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.03em' }}>Please sign in again</div>
+        <button
+          onClick={() => {
+            try {
+              localStorage.removeItem('ft_token');
+              localStorage.removeItem('ft_user');
+            } finally {
+              router.push('/');
+            }
+          }}
+          style={{
+            padding: '12px 16px',
+            borderRadius: 12,
+            fontSize: 13,
+            fontWeight: 800,
+            background: 'var(--accent)',
+            color: 'white',
+            border: 'none',
+            boxShadow: '0 4px 16px rgba(91,110,245,0.3)',
+            cursor: 'pointer',
+          }}
+        >
+          Clear session & return to login
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg)' }}>
