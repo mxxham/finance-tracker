@@ -20,13 +20,14 @@ function headers(extra?: Record<string, string>) {
 async function request(path: string, options?: RequestInit) {
   const token = getToken();
 
-  // Prevent a guaranteed 401 if we already know the token is missing.
-    if (!token && typeof window !== 'undefined') {
+  // If we have no token on the client, throw a structured error.
+  // Avoid relying on ad-hoc message matching elsewhere.
+  if (!token && typeof window !== 'undefined') {
     const err = new Error('Unauthorized: missing token');
     (err as { code?: string }).code = 'NO_TOKEN';
+    (err as { status?: number }).status = 401;
     throw err;
   }
-
 
   const res = await fetch(`${BASE}${path}`, {
     ...options,
