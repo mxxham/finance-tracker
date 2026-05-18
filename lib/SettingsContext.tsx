@@ -13,7 +13,16 @@ interface SettingsContextType {
   reload: () => Promise<void>;
 }
 
-const SettingsContext = createContext<SettingsContextType | null>(null);
+const DEFAULT_CONTEXT: SettingsContextType = {
+  settings: DEFAULT_SETTINGS,
+  loading: true,
+  fmt: makeFmt(DEFAULT_SETTINGS),
+  fmtShort: makeFmtShort(DEFAULT_SETTINGS),
+  updateSettings: async () => {},
+  reload: async () => {},
+};
+
+const SettingsContext = createContext<SettingsContextType>(DEFAULT_CONTEXT);
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
@@ -59,7 +68,5 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 }
 
 export function useSettings() {
-  const ctx = useContext(SettingsContext);
-  if (!ctx) throw new Error('useSettings must be used inside SettingsProvider');
-  return ctx;
+  return useContext(SettingsContext);
 }

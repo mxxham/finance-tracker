@@ -11,7 +11,18 @@ interface AuthContextType {
   loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+// Safe fallback so useAuth() never throws when called outside a provider
+// (e.g. during Next.js SSR of /_not-found which includes dashboard layout chunks)
+const DEFAULT_CONTEXT: AuthContextType = {
+  user: null,
+  token: null,
+  loading: true,
+  login: async () => { throw new Error('AuthProvider not mounted'); },
+  register: async () => { throw new Error('AuthProvider not mounted'); },
+  logout: () => {},
+};
+
+const AuthContext = createContext<AuthContextType>(DEFAULT_CONTEXT);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -26,13 +37,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(stored);
         setUser(JSON.parse(storedUser));
       }
-    } catch {
-      // localStorage unavailable (SSR, private browsing edge case)
-    }
+    } catch { /* localStorage unavailable */ }
     setLoading(false);
   }, []);
 
-  // Called by DashboardLayout when an API call returns 401
   const logout = useCallback(() => {
     setUser(null);
     setToken(null);
@@ -77,8 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Never throws — returns the default context if called outside AuthProvider
+// This is intentional: Next.js SSR bundles layout chunks together and may
+// call this during prerendering of pages like /_not-found
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
-  return ctx;
+  return useContext(AuthContext);
 }
