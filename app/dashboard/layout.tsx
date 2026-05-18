@@ -6,25 +6,112 @@ import Sidebar from '@/components/Sidebar';
 import ToastContainer from '@/components/Toast';
 import { getPermissionStatus, checkBudgetAlerts } from '@/lib/notifications';
 import { useSettings } from '@/lib/SettingsContext';
+import { ApiError } from '@/lib/api';
+
+// Full-screen skeleton shown while auth resolves — lives here, not in ClientLayout,
+// because useAuth() requires AuthProvider to be in scope (which it is here but not in root layout)
+function DashboardSkeleton() {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg)' }}>
+      {/* Sidebar skeleton */}
+      <div style={{ width: 228, borderRight: '1px solid var(--border)', background: 'var(--surface)', padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 4px', marginBottom: 16 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--accent)', opacity: 0.9 }} />
+          <div style={{ flex: 1 }}>
+            <div className="skeleton" style={{ height: 12, width: 70, borderRadius: 4, marginBottom: 4 }} />
+            <div className="skeleton" style={{ height: 9, width: 100, borderRadius: 4 }} />
+          </div>
+        </div>
+        {[40, 60, 50, 55, 45, 50, 48, 42].map((w, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10 }}>
+            <div className="skeleton" style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0 }} />
+            <div className="skeleton" style={{ height: 11, width: `${w}%`, borderRadius: 4 }} />
+          </div>
+        ))}
+      </div>
+      {/* Content skeleton */}
+      <div style={{ flex: 1, padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 14, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+          <div>
+            <div className="skeleton" style={{ height: 28, width: 160, borderRadius: 6, marginBottom: 8 }} />
+            <div className="skeleton" style={{ height: 12, width: 120, borderRadius: 4 }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div className="skeleton" style={{ height: 36, width: 86, borderRadius: 9 }} />
+            <div className="skeleton" style={{ height: 36, width: 78, borderRadius: 9 }} />
+            <div className="skeleton" style={{ height: 36, width: 72, borderRadius: 9 }} />
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 16 }}>
+              <div className="skeleton" style={{ height: 10, width: 64, borderRadius: 4, marginBottom: 12 }} />
+              <div className="skeleton" style={{ height: 22, width: 110, borderRadius: 5, marginBottom: 10 }} />
+              <div className="skeleton" style={{ height: 4, borderRadius: 99 }} />
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 12 }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20 }}>
+            <div className="skeleton" style={{ height: 14, width: 140, borderRadius: 4, marginBottom: 8 }} />
+            <div className="skeleton" style={{ height: 10, width: 90, borderRadius: 4, marginBottom: 20 }} />
+            <div className="skeleton" style={{ height: 200, borderRadius: 8 }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, flex: 1 }}>
+              <div className="skeleton" style={{ height: 14, width: 90, borderRadius: 4, marginBottom: 8 }} />
+              <div className="skeleton" style={{ height: 130, borderRadius: 8, marginBottom: 12 }} />
+              {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 11, borderRadius: 4, marginBottom: 8 }} />)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const prevPath = useRef<string | null>(null);
   const mainRef = useRef<HTMLDivElement>(null);
+  const redirecting = useRef(false);
 
-  useEffect(() => { if (!loading && !user) router.push('/'); }, [user, loading, router]);
+  // Single redirect — guarded so it never loops
+  useEffect(() => {
+    if (loading) return;
+    if (!user && !redirecting.current) {
+      redirecting.current = true;
+      router.replace('/');
+    }
+  }, [user, loading, router]);
+
+  useEffect(() => {
+    if (user) redirecting.current = false;
+  }, [user]);
+
+  // Listen for 401s from any API call and log out cleanly
+  useEffect(() => {
+    const handle401 = (e: Event) => {
+      const err = (e as CustomEvent<ApiError>).detail;
+      if (err?.status === 401 && !redirecting.current) {
+        redirecting.current = true;
+        logout();
+        router.replace('/');
+      }
+    };
+    window.addEventListener('api:unauthorized', handle401);
+    return () => window.removeEventListener('api:unauthorized', handle401);
+  }, [logout, router]);
 
   const { settings } = useSettings();
 
-  // Auto-check budgets on load if notifications are enabled
   useEffect(() => {
     if (!user || loading) return;
     if (getPermissionStatus() !== 'granted') return;
     if (!settings.budget_alerts) return;
     const threshold = settings.budget_alert_threshold ?? 80;
-    // Delay slightly so page content loads first
     const timer = setTimeout(() => {
       checkBudgetAlerts(threshold).catch(() => {});
     }, 3000);
@@ -49,7 +136,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
       });
     }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
-
     const observe = () => {
       document.querySelectorAll('.scroll-reveal').forEach(el => observer.observe(el));
     };
@@ -58,71 +144,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => { observer.disconnect(); clearTimeout(timer); };
   }, [pathname]);
 
-  if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: 'white', animation: 'pulse-ring 1.5s ease infinite', boxShadow: '0 0 24px rgba(91,110,245,0.4)' }}>F</div>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)', letterSpacing: '-0.01em', animation: 'fadeIn 0.5s ease both' }}>Loading…</div>
-      </div>
-    </div>
-  );
+  // Auth resolving → show skeleton (matches real layout to prevent flash)
+  if (loading) return <DashboardSkeleton />;
 
-  if (!user) {
-    return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 14,
-          background: 'var(--bg)',
-          padding: 24,
-          textAlign: 'center',
-        }}
-      >
-        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Unauthorized / Session expired</div>
-        <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.03em' }}>Please sign in again</div>
-        <button
-          onClick={() => {
-            try {
-              localStorage.removeItem('ft_token');
-              localStorage.removeItem('ft_user');
-            } finally {
-              router.push('/');
-            }
-          }}
-          style={{
-            padding: '12px 16px',
-            borderRadius: 12,
-            fontSize: 13,
-            fontWeight: 800,
-            background: 'var(--accent)',
-            color: 'white',
-            border: 'none',
-            boxShadow: '0 4px 16px rgba(91,110,245,0.3)',
-            cursor: 'pointer',
-          }}
-        >
-          Clear session & return to login
-        </button>
-      </div>
-    );
-  }
+  // Not authed → render nothing, redirect is in flight
+  if (!user) return null;
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg)' }}>
       <Sidebar />
-      <main
-        className="dashboard-main"
-        style={{
-          width: '100%',
-          // Mobile: sidebar is replaced by a fixed bottom nav, so content needs
-          // extra bottom padding to avoid being clipped.
-          paddingBottom: '84px',
-        }}
-      >
+      <main className="dashboard-main" style={{ width: '100%', paddingBottom: '84px' }}>
         <div ref={mainRef} className="page-enter dashboard-content">
           {children}
         </div>
