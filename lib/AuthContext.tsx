@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
 interface User { id: number; name: string; email: string; }
 interface AuthContextType {
@@ -19,13 +19,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem('ft_token');
-    const storedUser = localStorage.getItem('ft_user');
-    if (stored && storedUser) {
-      setToken(stored);
-      setUser(JSON.parse(storedUser));
+    try {
+      const stored = localStorage.getItem('ft_token');
+      const storedUser = localStorage.getItem('ft_user');
+      if (stored && storedUser) {
+        setToken(stored);
+        setUser(JSON.parse(storedUser));
+      }
+    } catch {
+      // localStorage unavailable (SSR, private browsing edge case)
     }
     setLoading(false);
+  }, []);
+
+  // Called by DashboardLayout when an API call returns 401
+  const logout = useCallback(() => {
+    setUser(null);
+    setToken(null);
+    try {
+      localStorage.removeItem('ft_token');
+      localStorage.removeItem('ft_user');
+    } catch { /* ignore */ }
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -54,13 +68,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
     localStorage.setItem('ft_token', data.token);
     localStorage.setItem('ft_user', JSON.stringify(data.user));
-  };
-
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('ft_token');
-    localStorage.removeItem('ft_user');
   };
 
   return (

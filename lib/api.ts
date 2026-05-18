@@ -5,9 +5,6 @@ function getToken() {
   return localStorage.getItem('ft_token');
 }
 
-
-
-
 function headers(extra?: Record<string, string>) {
   const token = getToken();
   return {
@@ -17,18 +14,26 @@ function headers(extra?: Record<string, string>) {
   };
 }
 
+// Custom error class so callers can distinguish auth failures
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
 async function request(path: string, options?: RequestInit) {
   const token = getToken();
 
-  // If we have no token on the client, redirect to login immediately
+  // No token — throw so DashboardLayout can handle the redirect cleanly
+  // Never redirect from here: that causes a glitch loop because AuthContext
+  // hasn't finished reading localStorage yet on first render
   if (!token && typeof window !== 'undefined') {
-    localStorage.removeItem('ft_token');
-    localStorage.removeItem('ft_user');
-    window.location.href = '/';
-    const err = new Error('Unauthorized: missing token');
-    (err as { code?: string }).code = 'NO_TOKEN';
-    (err as { status?: number }).status = 401;
-    throw err;
+    throw new ApiError('No token', 401, 'NO_TOKEN');
   }
 
   const res = await fetch(`${BASE}${path}`, {
@@ -38,24 +43,21 @@ async function request(path: string, options?: RequestInit) {
 
   const data = await res.json().catch(() => ({}));
 
-  // If the server returns 401 (token expired / invalid JWT_SECRET mismatch),
-  // clear local storage and redirect to login so the user isn't stuck
-  if (res.status === 401 && typeof window !== 'undefined') {
-    localStorage.removeItem('ft_token');
-    localStorage.removeItem('ft_user');
-    window.location.href = '/';
-    throw new Error('Session expired. Please sign in again.');
+  if (res.status === 401) {
+    const err = new ApiError(data.error || 'Unauthorized', 401, 'INVALID_TOKEN');
+    // Dispatch event so DashboardLayout can log out + redirect without a loop
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('api:unauthorized', { detail: err }));
+    }
+    throw err;
   }
 
   if (!res.ok) {
-    const err = new Error(data.error || 'Request failed');
-    (err as { status?: number }).status = res.status;
-    throw err;
+    throw new ApiError(data.error || 'Request failed', res.status);
   }
 
   return data;
 }
-
 
 export const api = {
   getTransactions: (params?: Record<string, string>) => {
