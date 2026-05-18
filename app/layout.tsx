@@ -8,6 +8,68 @@ import { getPermissionStatus, checkBudgetAlerts } from '@/lib/notifications';
 import { useSettings } from '@/lib/SettingsContext';
 import { ApiError } from '@/lib/api';
 
+// Full-screen skeleton shown while auth resolves — lives here, not in ClientLayout,
+// because useAuth() requires AuthProvider to be in scope (which it is here but not in root layout)
+function DashboardSkeleton() {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg)' }}>
+      {/* Sidebar skeleton */}
+      <div style={{ width: 228, borderRight: '1px solid var(--border)', background: 'var(--surface)', padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 4px', marginBottom: 16 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--accent)', opacity: 0.9 }} />
+          <div style={{ flex: 1 }}>
+            <div className="skeleton" style={{ height: 12, width: 70, borderRadius: 4, marginBottom: 4 }} />
+            <div className="skeleton" style={{ height: 9, width: 100, borderRadius: 4 }} />
+          </div>
+        </div>
+        {[40, 60, 50, 55, 45, 50, 48, 42].map((w, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10 }}>
+            <div className="skeleton" style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0 }} />
+            <div className="skeleton" style={{ height: 11, width: `${w}%`, borderRadius: 4 }} />
+          </div>
+        ))}
+      </div>
+      {/* Content skeleton */}
+      <div style={{ flex: 1, padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 14, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+          <div>
+            <div className="skeleton" style={{ height: 28, width: 160, borderRadius: 6, marginBottom: 8 }} />
+            <div className="skeleton" style={{ height: 12, width: 120, borderRadius: 4 }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div className="skeleton" style={{ height: 36, width: 86, borderRadius: 9 }} />
+            <div className="skeleton" style={{ height: 36, width: 78, borderRadius: 9 }} />
+            <div className="skeleton" style={{ height: 36, width: 72, borderRadius: 9 }} />
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 16 }}>
+              <div className="skeleton" style={{ height: 10, width: 64, borderRadius: 4, marginBottom: 12 }} />
+              <div className="skeleton" style={{ height: 22, width: 110, borderRadius: 5, marginBottom: 10 }} />
+              <div className="skeleton" style={{ height: 4, borderRadius: 99 }} />
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 12 }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20 }}>
+            <div className="skeleton" style={{ height: 14, width: 140, borderRadius: 4, marginBottom: 8 }} />
+            <div className="skeleton" style={{ height: 10, width: 90, borderRadius: 4, marginBottom: 20 }} />
+            <div className="skeleton" style={{ height: 200, borderRadius: 8 }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, flex: 1 }}>
+              <div className="skeleton" style={{ height: 14, width: 90, borderRadius: 4, marginBottom: 8 }} />
+              <div className="skeleton" style={{ height: 130, borderRadius: 8, marginBottom: 12 }} />
+              {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 11, borderRadius: 4, marginBottom: 8 }} />)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
@@ -16,7 +78,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const mainRef = useRef<HTMLDivElement>(null);
   const redirecting = useRef(false);
 
-  // Redirect to login when not authenticated — only once, no flicker loop
+  // Single redirect — guarded so it never loops
   useEffect(() => {
     if (loading) return;
     if (!user && !redirecting.current) {
@@ -25,13 +87,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [user, loading, router]);
 
-  // Reset redirect guard when user logs in
   useEffect(() => {
     if (user) redirecting.current = false;
   }, [user]);
 
-  // Global 401 handler — any API call returning 401 fires this
-  // Catches expired / wrong-secret tokens without causing a redirect loop
+  // Listen for 401s from any API call and log out cleanly
   useEffect(() => {
     const handle401 = (e: Event) => {
       const err = (e as CustomEvent<ApiError>).detail;
@@ -84,27 +144,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => { observer.disconnect(); clearTimeout(timer); };
   }, [pathname]);
 
-  // While auth is resolving, show a clean spinner — no flicker, no redirect
-  if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: 'white', animation: 'pulse-ring 1.5s ease infinite', boxShadow: '0 0 24px rgba(91,110,245,0.4)' }}>F</div>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)', letterSpacing: '-0.01em' }}>Loading…</div>
-      </div>
-    </div>
-  );
+  // Auth resolving → show skeleton (matches real layout to prevent flash)
+  if (loading) return <DashboardSkeleton />;
 
-  // Not authenticated: show nothing while router.replace('/') takes effect
-  // This prevents the "Please sign in again" screen from flashing
+  // Not authed → render nothing, redirect is in flight
   if (!user) return null;
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg)' }}>
       <Sidebar />
-      <main
-        className="dashboard-main"
-        style={{ width: '100%', paddingBottom: '84px' }}
-      >
+      <main className="dashboard-main" style={{ width: '100%', paddingBottom: '84px' }}>
         <div ref={mainRef} className="page-enter dashboard-content">
           {children}
         </div>
