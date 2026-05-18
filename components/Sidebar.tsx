@@ -100,9 +100,11 @@ export default function Sidebar() {
 
   // ── MOBILE ─────────────────────────────────────────────────────
   if (isMobile) {
-    const primaryItems = nav.filter(n => BOTTOM_PRIMARY.includes(n.iconKey));
-    const moreItems = nav.filter(n => !BOTTOM_PRIMARY.includes(n.iconKey));
+    const primaryItems = nav.filter((n) => BOTTOM_PRIMARY.includes(n.iconKey));
+    const moreItems = nav.filter((n) => !BOTTOM_PRIMARY.includes(n.iconKey));
 
+    // Mobile needs enough bottom padding so the page content can scroll
+    // behind the fixed bottom nav without getting clipped.
     return (
       <>
         {/* Top header bar */}

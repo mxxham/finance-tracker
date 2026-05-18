@@ -72,7 +72,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg)' }}>
       <Sidebar />
-      <main className="dashboard-main">
+      <main
+        className="dashboard-main"
+        style={{
+          width: '100%',
+          // Mobile: sidebar is replaced by a fixed bottom nav, so content needs
+          // extra bottom padding to avoid being clipped.
+          paddingBottom: '84px',
+        }}
+      >
         <div ref={mainRef} className="page-enter dashboard-content">
           {children}
         </div>
