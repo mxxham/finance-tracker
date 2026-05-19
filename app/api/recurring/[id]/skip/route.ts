@@ -3,15 +3,16 @@ import { query } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 
 // POST /api/recurring/[id]/skip
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = requireAuth(req);
-    const id = parseInt(params.id);
+    const { id } = await params;
+    const idNum = parseInt(id);
 
     // Get the recurring transaction
     const recurring = await query(
       'SELECT * FROM recurring WHERE id = $1 AND user_id = $2',
-      [id, user.userId]
+      [idNum, user.userId]
     );
 
     if (recurring.rows.length === 0) {
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       `UPDATE recurring
        SET next_due = $1, is_active = $2
        WHERE id = $3`,
-      [nextDue.toISOString().split('T')[0], isActive, id]
+      [nextDue.toISOString().split('T')[0], isActive, idNum]
     );
 
     return NextResponse.json({ success: true });

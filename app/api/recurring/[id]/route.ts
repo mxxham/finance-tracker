@@ -3,16 +3,17 @@ import { query } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 
 // PUT /api/recurring/[id]
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = requireAuth(req);
-    const id = parseInt(params.id);
+    const { id } = await params;
+    const idNum = parseInt(id);
     const body = await req.json();
 
     // Check ownership
     const existing = await query(
       'SELECT * FROM recurring WHERE id = $1 AND user_id = $2',
-      [id, user.userId]
+      [idNum, user.userId]
     );
 
     if (existing.rows.length === 0) {
@@ -44,7 +45,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         body.auto_post,
         body.notes || null,
         body.is_active,
-        id,
+        idNum,
         user.userId
       ]
     );
@@ -57,22 +58,23 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 // DELETE /api/recurring/[id]
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = requireAuth(req);
-    const id = parseInt(params.id);
+    const { id } = await params;
+    const idNum = parseInt(id);
 
     // Check ownership
     const existing = await query(
       'SELECT * FROM recurring WHERE id = $1 AND user_id = $2',
-      [id, user.userId]
+      [idNum, user.userId]
     );
 
     if (existing.rows.length === 0) {
       return NextResponse.json({ error: 'Recurring transaction not found' }, { status: 404 });
     }
 
-    await query('DELETE FROM recurring WHERE id = $1 AND user_id = $2', [id, user.userId]);
+    await query('DELETE FROM recurring WHERE id = $1 AND user_id = $2', [idNum, user.userId]);
 
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
