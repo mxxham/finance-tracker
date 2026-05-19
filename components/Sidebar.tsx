@@ -10,23 +10,12 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
   overview:      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
   analytics:     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
   transactions:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/><polyline points="19 7 12 0 5 7" style={{opacity:0.5}}/></svg>,
-  budgets:       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 12h.01"/><path d="M2 10h20"/></svg>,
-  savings:       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 11c0-3.87-3.13-7-7-7S5 7.13 5 11c0 2.38 1.19 4.47 3 5.74V19a1 1 0 001 1h6a1 1 0 001-1v-2.26c1.81-1.27 3-3.36 3-5.74z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="15" y1="11" x2="12" y2="11"/></svg>,
+  budgets:       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  savings:       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>,
   categories:    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h10M4 18h6"/></svg>,
   scan:          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>,
   settings:      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>,
   more:          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>,
-};
-
-const NAV_SHORT_LABEL: Record<string, string> = {
-  overview:     'Home',
-  transactions: 'Txns',
-  budgets:      'Budgets',
-  savings:      'Savings',
-  scan:         'Scan',
-  analytics:    'Analytics',
-  categories:   'Categories',
-  settings:     'Settings',
 };
 
 const nav = [
@@ -40,8 +29,8 @@ const nav = [
   { href: '/dashboard/settings',     label: 'Settings',     iconKey: 'settings',     desc: 'Preferences' },
 ];
 
-// Bottom nav: 5 primary tabs — most-used pages front and center
-const BOTTOM_PRIMARY = ['overview', 'transactions', 'budgets', 'savings', 'scan'];
+// Bottom nav: 4 primary + "more"
+const BOTTOM_PRIMARY = ['overview', 'analytics', 'transactions', 'scan'];
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -100,11 +89,9 @@ export default function Sidebar() {
 
   // ── MOBILE ─────────────────────────────────────────────────────
   if (isMobile) {
-    const primaryItems = nav.filter((n) => BOTTOM_PRIMARY.includes(n.iconKey));
-    const moreItems = nav.filter((n) => !BOTTOM_PRIMARY.includes(n.iconKey));
+    const primaryItems = nav.filter(n => BOTTOM_PRIMARY.includes(n.iconKey));
+    const moreItems = nav.filter(n => !BOTTOM_PRIMARY.includes(n.iconKey));
 
-    // Mobile needs enough bottom padding so the page content can scroll
-    // behind the fixed bottom nav without getting clipped.
     return (
       <>
         {/* Top header bar */}
@@ -115,12 +102,13 @@ export default function Sidebar() {
           padding: '0 16px', zIndex: 50,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 30, height: 30, borderRadius: 8, background: 'var(--accent)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 13, fontWeight: 700, color: 'white',
-              boxShadow: '0 0 12px rgba(91,110,245,0.4)',
-            }}>F</div>
+            <svg width="30" height="30" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0, filter: 'drop-shadow(0 0 8px rgba(91,110,245,0.45))' }}>
+              <rect width="96" height="96" rx="20" fill="#5b6ef5"/>
+              <path d="M 48 20 L 70 34 L 70 58 Q 70 76 48 84 Q 26 76 26 58 L 26 34 Z" fill="white" opacity="0.08"/>
+              <path d="M 48 20 L 70 34 L 70 58 Q 70 76 48 84 Q 26 76 26 58 L 26 34 Z" fill="none" stroke="white" strokeWidth="1.5" opacity="0.22"/>
+              <polyline points="31,62 41,45 51,53 65,32" fill="none" stroke="white" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="65" cy="32" r="4.5" fill="white"/>
+            </svg>
             <div>
               <div style={{ fontWeight: 700, fontSize: 14, letterSpacing: '-0.03em', lineHeight: 1.1 }}>FinTrack</div>
               <div style={{ fontSize: 9, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Personal Finance</div>
@@ -195,35 +183,28 @@ export default function Sidebar() {
             return (
               <Link key={item.href} href={item.href} style={{
                 flex: 1, display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center', gap: 3,
+                alignItems: 'center', justifyContent: 'center', gap: 4,
                 textDecoration: 'none', position: 'relative',
-                color: active ? 'var(--accent)' : 'var(--text-muted)',
+                color: active ? 'var(--accent-2)' : 'var(--text-muted)',
                 transition: 'color 0.15s ease',
-                minWidth: 0,
               }}>
-                {active && <span style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 28, height: 2.5, borderRadius: '0 0 3px 3px', background: 'var(--accent)' }} />}
-                {item.highlight && !active && <span style={{ position: 'absolute', top: 10, right: 'calc(50% - 16px)', width: 5, height: 5, borderRadius: '50%', background: 'var(--accent)' }} />}
-                <span style={{
-                  width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transform: active ? 'scale(1.15)' : 'scale(1)',
-                  transition: 'transform 0.22s cubic-bezier(0.34,1.3,0.64,1)',
-                }}>{NAV_ICONS[item.iconKey]}</span>
-                <span style={{ fontSize: 9.5, fontWeight: active ? 700 : 400, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', paddingInline: 2 }}>
-                  {NAV_SHORT_LABEL[item.iconKey] ?? item.label}
-                </span>
+                {active && <span style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 32, height: 2, borderRadius: '0 0 2px 2px', background: 'var(--accent)' }} />}
+                {item.highlight && !active && <span style={{ position: 'absolute', top: 10, right: 'calc(50% - 18px)', width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />}
+                <span style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: active ? 'scale(1.12)' : 'scale(1)', transition: 'transform 0.2s cubic-bezier(0.34,1.3,0.64,1)' }}>{NAV_ICONS[item.iconKey]}</span>
+                <span style={{ fontSize: 10, fontWeight: active ? 600 : 400 }}>{item.label}</span>
               </Link>
             );
           })}
           {/* More button */}
           <button onClick={() => setMoreOpen(v => !v)} style={{
             flex: 1, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', gap: 3,
+            alignItems: 'center', justifyContent: 'center', gap: 4,
             background: 'none', border: 'none',
-            color: moreOpen ? 'var(--accent)' : 'var(--text-muted)',
-            transition: 'color 0.15s ease', padding: 0, minWidth: 0,
+            color: moreOpen ? 'var(--accent-2)' : 'var(--text-muted)',
+            transition: 'color 0.15s ease', padding: 0,
           }}>
-            <span style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{NAV_ICONS.more}</span>
-            <span style={{ fontSize: 9.5, fontWeight: moreOpen ? 700 : 400 }}>More</span>
+            <span style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{NAV_ICONS.more}</span>
+            <span style={{ fontSize: 10, fontWeight: moreOpen ? 600 : 400 }}>More</span>
           </button>
         </nav>
       </>
@@ -242,7 +223,13 @@ export default function Sidebar() {
     }}>
       <div style={{ padding: collapsed ? '22px 14px 18px' : '22px 20px 18px', borderBottom: '1px solid var(--border)', transition: 'padding 0.3s ease', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
-          <div style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'white', flexShrink: 0, animation: 'pulse-calm 4s ease infinite', boxShadow: '0 0 16px rgba(91,110,245,0.4)' }}>F</div>
+          <svg width="32" height="32" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0, filter: 'drop-shadow(0 0 10px rgba(91,110,245,0.45))' }}>
+              <rect width="96" height="96" rx="20" fill="#5b6ef5"/>
+              <path d="M 48 20 L 70 34 L 70 58 Q 70 76 48 84 Q 26 76 26 58 L 26 34 Z" fill="white" opacity="0.08"/>
+              <path d="M 48 20 L 70 34 L 70 58 Q 70 76 48 84 Q 26 76 26 58 L 26 34 Z" fill="none" stroke="white" strokeWidth="1.5" opacity="0.22"/>
+              <polyline points="31,62 41,45 51,53 65,32" fill="none" stroke="white" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="65" cy="32" r="4.5" fill="white"/>
+            </svg>
           {!collapsed && (
             <div className="sidebar-logo-text" style={{ overflow: 'hidden', whiteSpace: 'nowrap', transition: 'opacity 0.2s ease' }}>
               <div style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.03em', lineHeight: 1.1 }}>FinTrack</div>
