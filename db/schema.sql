@@ -44,6 +44,24 @@ CREATE TABLE IF NOT EXISTS budgets (
   UNIQUE(user_id, category_id, month, year)
 );
 
+CREATE TABLE IF NOT EXISTS recurring (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('income', 'expense')),
+  description TEXT NOT NULL,
+  frequency VARCHAR(20) NOT NULL CHECK (frequency IN ('daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly')),
+  start_date DATE NOT NULL,
+  end_date DATE,
+  next_due DATE NOT NULL,
+  last_generated DATE,
+  is_active BOOLEAN DEFAULT true,
+  auto_post BOOLEAN DEFAULT false,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Indexes for performance
 CREATE INDEX idx_transactions_user_date ON transactions(user_id, date DESC);
 CREATE INDEX idx_transactions_user_type ON transactions(user_id, type);

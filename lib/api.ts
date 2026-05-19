@@ -116,6 +116,18 @@ export const api = {
     request(`/savings-goals/${id}`, { method: 'PUT', body: JSON.stringify({ action: 'contribute', amount, note, date }) }),
   withdrawFromGoal: (id: number, amount: number, note?: string, date?: string) =>
     request(`/savings-goals/${id}`, { method: 'PUT', body: JSON.stringify({ action: 'withdraw', amount, note, date }) }),
+
+  getRecurring: () => request('/recurring'),
+  createRecurring: (body: object) =>
+    request('/recurring', { method: 'POST', body: JSON.stringify(body) }),
+  updateRecurring: (id: number, body: object) =>
+    request(`/recurring/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteRecurring: (id: number) =>
+    request(`/recurring/${id}`, { method: 'DELETE' }),
+  postRecurringNow: (id: number) =>
+    request(`/recurring/${id}/post`, { method: 'POST' }),
+  skipRecurring: (id: number) =>
+    request(`/recurring/${id}/skip`, { method: 'POST' }),
 };
 
 export const scanScreenshot = async (imageBase64: string, mimeType: string) => {
