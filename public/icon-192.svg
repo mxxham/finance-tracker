@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192" role="img">
+  <title>FinTrack</title>
+  <rect width="192" height="192" rx="40" fill="#5b6ef5"/>
+  <path d="M 96 40 L 140 68 L 140 116 Q 140 152 96 168 Q 52 152 52 116 L 52 68 Z" fill="white" opacity="0.08"/>
+  <path d="M 96 40 L 140 68 L 140 116 Q 140 152 96 168 Q 52 152 52 116 L 52 68 Z" fill="none" stroke="white" stroke-width="2.5" opacity="0.22"/>
+  <polyline points="62,124 82,90 102,106 130,64" fill="none" stroke="white" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="130" cy="64" r="9" fill="white"/>
+</svg>
