@@ -5,6 +5,7 @@ import { translateCategory } from '@/lib/categories';
 import { showToast } from '@/components/Toast';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useSettings } from '@/lib/SettingsContext';
+import { BalanceCard } from '@/components/BalanceCard';
 
 interface Stats {
   income: number;
@@ -769,24 +770,21 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── Stat Cards ── */}
-      <div className="stats-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
-        {loading
-          ? STAT_CONFIG.map((s, i) => (
-              <div key={s.key} className={`animate-fadeUp stagger-${i + 1}`} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 16 }}>
-                <Skeleton w={64} h={10} />
-                <div style={{ marginTop: 12 }}>
-                  <Skeleton w={100} h={20} />
-                </div>
-                <div style={{ marginTop: 10 }}>
-                  <Skeleton h={4} />
-                </div>
-              </div>
-            ))
-          : STAT_CONFIG.map((cfg, i) => (
-              <TiltStatCard key={`${cfg.key}-${month}-${year}`} cfg={cfg} val={statValues[cfg.key] ?? 0} incomeVal={incomeVal} staggerIdx={i} fmt={fmt} />
-            ))}
-      </div>
+      {/* ── Hero Balance Card ── */}
+      <BalanceCard
+        balance={stats ? Number(stats.balance) : null}
+        balanceLabel="Available Balance"
+        balanceSub="All-time income minus expenses"
+        loading={loading}
+        fmt={fmt}
+        variant="full"
+        chips={[
+          { label: 'Income', value: stats ? '+' + fmt(stats.income) : '—', valueColor: '#4ade80', sub: 'this month' },
+          { label: 'Expenses', value: stats ? '−' + fmt(stats.expenses) : '—', valueColor: '#f87171', sub: 'this month' },
+          { label: 'Saved', value: stats ? fmt(stats.savings) : '—', sub: 'this month' },
+          { label: 'Monthly Net', value: stats ? fmt(stats.monthlyNet ?? (stats.income - stats.expenses)) : '—', valueColor: stats && (stats.income - stats.expenses) >= 0 ? '#4ade80' : '#f87171', sub: 'income − expenses' },
+        ]}
+      />
 
       {/* ── Available Balance Strip ── */}
       {!loading && stats && (
