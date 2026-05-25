@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { showToast } from '@/components/Toast';
 import { useSettings } from '@/lib/SettingsContext';
+import { BalanceCard } from '@/components/BalanceCard';
 
 // ── Mobile detection hook ─────────────────────────────────────────
 function useIsMobile() {
@@ -306,17 +307,21 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      {/* Slim balance strip */}
-      {globalStats && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 12, background: 'linear-gradient(90deg, var(--accent-glow) 0%, var(--surface) 100%)', border: '1px solid var(--accent-glow-2)', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Balance</span>
-          <span style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--accent)', letterSpacing: '-0.03em' }}>{fmt(globalStats.balance)}</span>
-          <div style={{ width: 1, height: 16, background: 'var(--border-2)', margin: '0 4px' }} />
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>↑ <span style={{ color: 'var(--green)', fontWeight: 600 }}>{fmt(globalStats.income)}</span> in</span>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>↓ <span style={{ color: 'var(--red)', fontWeight: 600 }}>{fmt(globalStats.expenses)}</span> out</span>
-          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{txs.length} transactions this period</span>
-        </div>
-      )}
+      {/* Balance + period summary */}
+      <BalanceCard
+        balance={globalStats?.balance ?? null}
+        balanceLabel="Current Balance"
+        balanceSub="All-time net"
+        loading={loading}
+        fmt={fmt}
+        variant="compact"
+        chips={[
+          { label: 'Period Income', value: totals.income > 0 ? '+' + fmt(totals.income) : '—', valueColor: '#4ade80', sub: 'this period' },
+          { label: 'Period Expenses', value: totals.expenses > 0 ? '−' + fmt(totals.expenses) : '—', valueColor: '#f87171', sub: 'this period' },
+          { label: 'Net', value: fmt(totals.income - totals.expenses), valueColor: totals.income >= totals.expenses ? '#4ade80' : '#f87171', sub: 'income − expenses' },
+          { label: 'Transactions', value: String(filtered.length), sub: 'this period' },
+        ]}
+      />
 
       {/* Filters row - stacks on mobile */}
       <div className="filters-row" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -337,23 +342,6 @@ export default function TransactionsPage() {
           {[2023,2024,2025,2026].map(y => <option key={y} value={y}>{y}</option>)}
         </select>
       </div>
-
-      {/* Summary Pills */}
-      {!loading && filtered.length > 0 && (
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {[
-            { label: 'Total Income', val: totals.income, color: 'var(--green)', bg: 'var(--green-muted)', border: 'rgba(34,212,122,0.2)' },
-            { label: 'Total Expenses', val: totals.expenses, color: 'var(--red)', bg: 'var(--red-muted)', border: 'rgba(240,82,82,0.2)' },
-            { label: 'Today’s Spending', val: todayExpenses, color: 'var(--red)', bg: 'var(--red-muted)', border: 'rgba(240,82,82,0.2)' },
-            { label: 'Net', val: totals.income - totals.expenses, color: totals.income >= totals.expenses ? 'var(--green)' : 'var(--red)', bg: totals.income >= totals.expenses ? 'var(--green-muted)' : 'var(--red-muted)', border: totals.income >= totals.expenses ? 'rgba(34,212,122,0.2)' : 'rgba(240,82,82,0.2)' },
-          ].map(({ label, val, color, bg, border }) => (
-            <div key={label} style={{ padding: '10px 16px', borderRadius: 10, background: bg, border: `1px solid ${border}`, display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.02em', textTransform: 'uppercase' }}>{label}</span>
-              <span style={{ fontSize: 15, fontWeight: 700, color, fontFamily: 'var(--font-mono)', letterSpacing: '-0.03em' }}>{fmt(val)}</span>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Transaction list — swipeable cards on mobile, table on desktop */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
