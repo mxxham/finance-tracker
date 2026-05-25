@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { showToast } from '@/components/Toast';
 import { useSettings } from '@/lib/SettingsContext';
+import { BalanceCard } from '@/components/BalanceCard';
 
 // ── Mobile detection hook ─────────────────────────────────────────
 function useIsMobile() {
@@ -188,6 +189,7 @@ export default function TransactionsPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [globalStats, setGlobalStats] = useState<{ balance: number; income: number; expenses: number } | null>(null);
   const [form, setForm] = useState({ amount: '', type: 'expense', description: '', date: now.toISOString().split('T')[0], category_id: '' });
   const [budgets, setBudgets] = useState<{ id: number; amount: number; spent: number; category_id: number; category_name: string; category_color: string }[]>([]);
 
@@ -196,13 +198,15 @@ export default function TransactionsPage() {
     try {
       const params: Record<string, string> = { month: String(month), year: String(year), limit: '500' };
       if (filterType) params.type = filterType;
-      const [t, c, b] = await Promise.all([
+      const [t, c, b, s] = await Promise.all([
         api.getTransactions(params),
         api.getCategories(),
         api.getBudgets({ month: String(month), year: String(year) }).catch(() => []),
+        api.getStats().catch(() => null),
       ]);
       setTxs(t); setCategories(c); setPage(1);
       setBudgets(Array.isArray(b) ? b : []);
+      if (s) setGlobalStats({ balance: Number(s.balance ?? 0), income: Number(s.income ?? 0), expenses: Number(s.expenses ?? 0) });
     } catch { showToast('Failed to load', 'error'); }
     finally { setLoading(false); }
   }, [month, year, filterType]);
@@ -302,6 +306,16 @@ export default function TransactionsPage() {
           <button onClick={openAdd} style={{ padding: '10px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)' }}>+ Add</button>
         </div>
       </div>
+
+      {/* Balance overview */}
+      <BalanceCard
+        balance={globalStats?.balance ?? null}
+        monthlyIncome={globalStats?.income}
+        monthlyExpenses={globalStats?.expenses}
+        loading={loading}
+        fmt={fmt}
+        extras={[{ label: 'Transactions', value: String(txs.length), sub: 'this period' }]}
+      />
 
       {/* Filters row - stacks on mobile */}
       <div className="filters-row" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>

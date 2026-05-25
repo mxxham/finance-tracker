@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { useSettings } from '@/lib/SettingsContext';
+import { BalanceCard } from '@/components/BalanceCard';
 import { showToast } from '@/components/Toast';
 
 
@@ -20,7 +21,7 @@ interface Transaction {
 interface DailyRow { day: number; type: string; total: number; }
 interface TrendRow { month: number; year: number; type: string; total: number; }
 interface StatsData {
-  income: number; expenses: number;
+  income: number; expenses: number; balance: number; savings: number;
   trend: TrendRow[];
   daily: DailyRow[];
 }
@@ -516,6 +517,16 @@ export default function BudgetsPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Balance overview */}
+      <BalanceCard
+        balance={stats ? Number(stats.balance) : null}
+        monthlyIncome={stats ? Number(stats.income) : null}
+        monthlyExpenses={stats ? Number(stats.expenses) : null}
+        loading={loading}
+        fmt={fmt}
+        extras={[{ label: 'Budget health', value: budgets.length > 0 ? (budgets.filter(b => Number(b.spent ?? 0) / Number(b.amount) < 0.8).length + '/' + budgets.length + ' on track') : '—' }]}
+      />
 
       {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>

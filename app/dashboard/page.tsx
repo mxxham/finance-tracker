@@ -5,6 +5,7 @@ import { translateCategory } from '@/lib/categories';
 import { showToast } from '@/components/Toast';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useSettings } from '@/lib/SettingsContext';
+import { BalanceCard } from '@/components/BalanceCard';
 
 interface Stats {
   income: number;

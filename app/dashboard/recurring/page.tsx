@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { showToast } from '@/components/Toast';
 import { useSettings } from '@/lib/SettingsContext';
+import { BalanceCard } from '@/components/BalanceCard';
 
 interface Recurring {
   id: number;
@@ -114,7 +115,6 @@ export default function RecurringPage() {
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [monthlyStats, setMonthlyStats] = useState<{ income: number; expenses: number } | null>(null);
-  const [balanceVisible, setBalanceVisible] = useState(true);
 
   const emptyForm = {
     amount: '', type: 'expense' as 'income' | 'expense', description: '',
@@ -264,58 +264,17 @@ export default function RecurringPage() {
       </div>
 
       {/* Balance card */}
-      <div style={{
-        padding: '20px 24px', borderRadius: 16,
-        background: 'linear-gradient(135deg, #5b6ef5 0%, #7c3aed 100%)',
-        boxShadow: '0 8px 32px rgba(91,110,245,0.3)',
-        display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap',
-      }}>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Current Balance</span>
-            <button
-              onClick={() => setBalanceVisible(v => !v)}
-              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: '2px 4px', fontSize: 13, lineHeight: 1 }}
-              title={balanceVisible ? 'Hide balance' : 'Show balance'}
-            >
-              {balanceVisible ? '👁' : '🙈'}
-            </button>
-          </div>
-          {loading ? (
-            <div style={{ height: 40, width: 180, borderRadius: 8, background: 'rgba(255,255,255,0.15)', animation: 'pulse 1.5s ease infinite' }} />
-          ) : (
-            <div style={{ fontSize: 36, fontWeight: 900, fontFamily: 'var(--font-mono)', color: 'white', letterSpacing: '-0.04em', lineHeight: 1 }}>
-              {balanceVisible ? fmt(balance ?? 0) : '••••••••'}
-            </div>
-          )}
-          <div style={{ marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
-            All-time income minus expenses
-          </div>
-        </div>
-
-        {/* This month breakdown */}
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(4px)', minWidth: 130 }}>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>This month in</div>
-            <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'var(--font-mono)', color: '#4ade80', letterSpacing: '-0.02em' }}>
-              {loading ? '—' : balanceVisible ? '+' + fmt(monthlyStats?.income ?? 0) : '••••'}
-            </div>
-          </div>
-          <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(4px)', minWidth: 130 }}>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>This month out</div>
-            <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'var(--font-mono)', color: '#f87171', letterSpacing: '-0.02em' }}>
-              {loading ? '—' : balanceVisible ? '−' + fmt(monthlyStats?.expenses ?? 0) : '••••'}
-            </div>
-          </div>
-          <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(4px)', minWidth: 130 }}>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>After recurring</div>
-            <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'white', letterSpacing: '-0.02em' }}>
-              {loading ? '—' : balanceVisible ? fmt((balance ?? 0) - monthlyExpense) : '••••'}
-            </div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>if all expenses post</div>
-          </div>
-        </div>
-      </div>
+      <BalanceCard
+        balance={balance}
+        monthlyIncome={monthlyStats?.income}
+        monthlyExpenses={monthlyStats?.expenses}
+        projectedBalance={(balance ?? 0) - monthlyExpense}
+        projectedLabel="After recurring"
+        projectedSub="if all expenses post"
+        loading={loading}
+        fmt={fmt}
+        extras={[{ label: 'Active rules', value: String(active.length), sub: 'recurring transactions' }]}
+      />
 
       {/* Summary cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>

@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, RadarChart, Radar, PolarGrid, PolarAngleAxis, ReferenceLine, Legend } from 'recharts';
 import { useSettings } from '@/lib/SettingsContext';
+import { BalanceCard } from '@/components/BalanceCard';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS_OF_WEEK = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -424,6 +425,16 @@ return createPortal(
           </select>
         </div>
       </div>
+
+      {/* Balance overview */}
+      <BalanceCard
+        balance={stats ? Number(stats.balance) : null}
+        monthlyIncome={stats ? Number(stats.income) : null}
+        monthlyExpenses={stats ? Number(stats.expenses) : null}
+        loading={loading}
+        fmt={fmt}
+        extras={[{ label: 'Savings rate', value: stats && Number(stats.income) > 0 ? Math.round((Number(stats.savings) / Number(stats.income)) * 100) + '%' : '—', sub: 'of income saved' }]}
+      />
 
       {/* KPI Cards — staggered */}
       <div className="an-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
