@@ -5,7 +5,6 @@ import { translateCategory } from '@/lib/categories';
 import { showToast } from '@/components/Toast';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useSettings } from '@/lib/SettingsContext';
-import { BalanceCard } from '@/components/BalanceCard';
 
 interface Stats {
   income: number;
@@ -111,9 +110,9 @@ const STAT_CONFIG = [
   {
     key: 'savings',
     label: 'Saved',
-    color: '#5b6ef5',
+    color: 'var(--accent)',
     bg: 'var(--accent-glow)',
-    border: 'var(--accent-glow)',
+    border: 'var(--accent-glow-2)',
     icon: '◈',
   },
   {

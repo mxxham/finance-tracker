@@ -4,7 +4,6 @@ import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { showToast } from '@/components/Toast';
 import { useSettings } from '@/lib/SettingsContext';
-import { BalanceCard } from '@/components/BalanceCard';
 
 // ── Mobile detection hook ─────────────────────────────────────────
 function useIsMobile() {
@@ -307,15 +306,17 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      {/* Balance overview */}
-      <BalanceCard
-        balance={globalStats?.balance ?? null}
-        monthlyIncome={globalStats?.income}
-        monthlyExpenses={globalStats?.expenses}
-        loading={loading}
-        fmt={fmt}
-        extras={[{ label: 'Transactions', value: String(txs.length), sub: 'this period' }]}
-      />
+      {/* Slim balance strip */}
+      {globalStats && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 12, background: 'linear-gradient(90deg, var(--accent-glow) 0%, var(--surface) 100%)', border: '1px solid var(--accent-glow-2)', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Balance</span>
+          <span style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--accent)', letterSpacing: '-0.03em' }}>{fmt(globalStats.balance)}</span>
+          <div style={{ width: 1, height: 16, background: 'var(--border-2)', margin: '0 4px' }} />
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>↑ <span style={{ color: 'var(--green)', fontWeight: 600 }}>{fmt(globalStats.income)}</span> in</span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>↓ <span style={{ color: 'var(--red)', fontWeight: 600 }}>{fmt(globalStats.expenses)}</span> out</span>
+          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{txs.length} transactions this period</span>
+        </div>
+      )}
 
       {/* Filters row - stacks on mobile */}
       <div className="filters-row" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>

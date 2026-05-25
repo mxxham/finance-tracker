@@ -5,7 +5,6 @@ import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, RadarChart, Radar, PolarGrid, PolarAngleAxis, ReferenceLine, Legend } from 'recharts';
 import { useSettings } from '@/lib/SettingsContext';
-import { BalanceCard } from '@/components/BalanceCard';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS_OF_WEEK = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -414,7 +413,7 @@ return createPortal(
       <div className="animate-fadeUp" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.2, marginBottom: 4 }}>Analytics</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Smart financial insights & trends</p>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}>Smart financial insights & trends{stats && <><span style={{ color: 'var(--border-2)' }}>·</span><span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent)', fontSize: 13 }}>{fmt(Number(stats.balance))}</span><span>balance</span></>}</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <select value={month} onChange={e => setMonth(Number(e.target.value))} style={{ width: 96, fontSize: 13 }}>
@@ -425,16 +424,6 @@ return createPortal(
           </select>
         </div>
       </div>
-
-      {/* Balance overview */}
-      <BalanceCard
-        balance={stats ? Number(stats.balance) : null}
-        monthlyIncome={stats ? Number(stats.income) : null}
-        monthlyExpenses={stats ? Number(stats.expenses) : null}
-        loading={loading}
-        fmt={fmt}
-        extras={[{ label: 'Savings rate', value: stats && Number(stats.income) > 0 ? Math.round((Number(stats.savings) / Number(stats.income)) * 100) + '%' : '—', sub: 'of income saved' }]}
-      />
 
       {/* KPI Cards — staggered */}
       <div className="an-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>

@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { useSettings } from '@/lib/SettingsContext';
-import { BalanceCard } from '@/components/BalanceCard';
 import { showToast } from '@/components/Toast';
 
 // ── Types ───────────────────────────────────────────────────────
@@ -701,7 +700,6 @@ export default function SavingsPage() {
   const [modalSaving, setModalSaving] = useState(false);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'paused'>('all');
   const [availableBalance, setAvailableBalance] = useState<number>(0);
-  const [monthlyStats, setMonthlyStats] = useState<{ income: number; expenses: number } | null>(null);
   const [spendingAlerts, setSpendingAlerts] = useState<SpendingAlert[]>([]);
   const [alertsDismissed, setAlertsDismissed] = useState(false);
 
@@ -721,7 +719,6 @@ export default function SavingsPage() {
       const totalSaved = Array.isArray(data) ? data.reduce((s: number, g: SavingsGoal) => s + Number(g.current_amount), 0) : 0;
       const balance = Math.max(0, Number(stats.balance || 0) - totalSaved);
       setAvailableBalance(balance);
-      setMonthlyStats({ income: Number(stats.income ?? 0), expenses: Number(stats.expenses ?? 0) });
 
       // Build spending alerts: budgets >= 80% used
       const alerts: SpendingAlert[] = (Array.isArray(budgets) ? budgets : [])
@@ -817,19 +814,6 @@ export default function SavingsPage() {
       {!alertsDismissed && spendingAlerts.length > 0 && (
         <SpendingAlertBanner alerts={spendingAlerts} fmt={fmt} onDismiss={() => setAlertsDismissed(true)} />
       )}
-
-      {/* Balance overview */}
-      <BalanceCard
-        balance={availableBalance}
-        monthlyIncome={monthlyStats?.income}
-        monthlyExpenses={monthlyStats?.expenses}
-        loading={loading}
-        fmt={fmt}
-        extras={[
-          { label: 'Active goals', value: String(goals.filter(g => g.status === 'active').length), sub: 'in progress' },
-          { label: 'Total saved', value: fmt(goals.reduce((s, g) => s + Number(g.current_amount), 0)), sub: 'across all goals' },
-        ]}
-      />
 
       {/* Balance + Stats row */}
       {!loading && (() => {
