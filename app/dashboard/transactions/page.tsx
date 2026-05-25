@@ -73,7 +73,7 @@ function SwipeableRow({ tx, fmt, onEdit, onDelete }: {
       <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: ACTION_W, display: 'flex' }}>
         <button
           onClick={() => { close(); onEdit(); }}
-          style={{ flex: 1, background: '#3b82f6', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer' }}>
+          style={{ flex: 1, background: 'var(--accent)', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer' }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
             <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -82,7 +82,7 @@ function SwipeableRow({ tx, fmt, onEdit, onDelete }: {
         </button>
         <button
           onClick={() => { close(); onDelete(); }}
-          style={{ flex: 1, background: '#ef4444', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer' }}>
+          style={{ flex: 1, background: 'var(--red)', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer' }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="3 6 5 6 21 6"/>
             <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
@@ -303,7 +303,7 @@ export default function TransactionsPage() {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button onClick={exportCSV} style={{ padding: '10px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-soft)', border: '1px solid var(--border-2)' }}>↓ CSV</button>
-          <button onClick={openAdd} style={{ padding: '10px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)' }}>+ Add</button>
+          <button onClick={openAdd} style={{ padding: '10px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px var(--accent-glow-2)' }}>+ Add</button>
         </div>
       </div>
 
@@ -454,7 +454,7 @@ export default function TransactionsPage() {
             {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
               const p = totalPages <= 7 ? i+1 : page<=4 ? i+1 : page>=totalPages-3 ? totalPages-6+i : page-3+i;
               return (
-                <button key={p} onClick={() => setPage(p)} style={{ width: 32, height: 32, borderRadius: 8, fontSize: 12, fontWeight: 600, background: p===page?'var(--accent)':'var(--surface-2)', color: p===page?'white':'var(--text-muted)', border: `1px solid ${p===page?'var(--accent)':'var(--border)'}`, boxShadow: p===page?'0 2px 8px rgba(91,110,245,0.3)':'none' }}>{p}</button>
+                <button key={p} onClick={() => setPage(p)} style={{ width: 32, height: 32, borderRadius: 8, fontSize: 12, fontWeight: 600, background: p===page?'var(--accent)':'var(--surface-2)', color: p===page?'white':'var(--text-muted)', border: `1px solid ${p===page?'var(--accent)':'var(--border)'}`, boxShadow: p===page?'0 2px 8px var(--accent-glow-2)':'none' }}>{p}</button>
               );
             })}
             <button onClick={() => setPage(p => Math.min(totalPages,p+1))} disabled={page===totalPages} style={{ padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: 'var(--surface-2)', color: page===totalPages?'var(--text-muted)':'var(--text)', border: '1px solid var(--border)', opacity: page===totalPages?0.4:1 }}>Next →</button>
@@ -561,7 +561,7 @@ export default function TransactionsPage() {
 
             <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
               <button onClick={() => setShowModal(false)} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Cancel</button>
-              <button onClick={handleSave} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: wouldExceed ? 'var(--red)' : 'var(--accent)', color: 'white', border: 'none', boxShadow: `0 4px 16px ${wouldExceed ? 'rgba(240,82,82,0.35)' : 'rgba(91,110,245,0.3)'}`, transition: 'all 0.2s ease' }}>
+              <button onClick={handleSave} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: wouldExceed ? 'var(--red)' : 'var(--accent)', color: 'white', border: 'none', boxShadow: `0 4px 16px ${wouldExceed ? 'rgba(240,82,82,0.35)' : 'var(--accent-glow-2)'}`, transition: 'all 0.2s ease' }}>
                 {wouldExceed ? '⚠ Add Anyway' : editTx ? 'Save Changes' : 'Add Transaction'}
               </button>
             </div>

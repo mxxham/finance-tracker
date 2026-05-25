@@ -112,8 +112,8 @@ const STAT_CONFIG = [
     key: 'savings',
     label: 'Saved',
     color: '#5b6ef5',
-    bg: 'rgba(91,110,245,0.08)',
-    border: 'rgba(91,110,245,0.15)',
+    bg: 'var(--accent-glow)',
+    border: 'var(--accent-glow)',
     icon: '◈',
   },
   {
@@ -419,7 +419,7 @@ function SavingsOverviewStrip({ goals, fmt }: { goals: SavingsGoal[]; fmt: (n: n
                 width: `${overallPct}%`,
                 background: 'var(--accent)',
                 transition: 'width 0.9s cubic-bezier(0.34,1.1,0.64,1)',
-                boxShadow: '0 0 6px rgba(91,110,245,0.35)',
+                boxShadow: '0 0 6px var(--accent-glow-2)',
               }}
             />
           </div>
@@ -737,7 +737,7 @@ export default function DashboardPage() {
               background: 'var(--accent)',
               color: 'white',
               border: 'none',
-              boxShadow: '0 4px 16px rgba(91,110,245,0.3)',
+              boxShadow: '0 4px 16px var(--accent-glow-2)',
               whiteSpace: 'nowrap',
             }}
           >
@@ -1161,7 +1161,7 @@ export default function DashboardPage() {
                   background: 'var(--accent)',
                   color: 'white',
                   border: 'none',
-                  boxShadow: '0 4px 16px rgba(91,110,245,0.3)',
+                  boxShadow: '0 4px 16px var(--accent-glow-2)',
                   opacity: saving ? 0.6 : 1,
                 }}
               >

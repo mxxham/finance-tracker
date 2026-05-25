@@ -248,7 +248,7 @@ export default function ScanPage() {
         {APPS.map(app => (
           <span key={app} style={{ fontSize: 11, padding: '4px 10px', borderRadius: 99, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)', fontWeight: 500 }}>{app}</span>
         ))}
-        <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 99, background: 'var(--accent-glow)', border: '1px solid rgba(91,110,245,0.25)', color: 'var(--accent-2)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 99, background: 'var(--accent-glow)', border: '1px solid var(--accent-glow-2)', color: 'var(--accent-2)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
           100% local
         </span>
@@ -270,7 +270,7 @@ export default function ScanPage() {
                 fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em',
                 transition: 'all 0.18s ease',
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(91,110,245,0.18)'; }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--accent-glow)'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--accent-glow)'; }}
             >
               {CAMERA_ICON}
@@ -359,7 +359,7 @@ export default function ScanPage() {
                   {isMobile && (
                     <button
                       onClick={() => { reset(); setTimeout(() => cameraRef.current?.click(), 50); }}
-                      style={{ fontSize: 11, padding: '5px 10px', borderRadius: 7, background: 'var(--accent-glow)', color: 'var(--accent-2)', border: '1px solid rgba(91,110,245,0.25)', display: 'flex', alignItems: 'center', gap: 5, fontWeight: 600 }}
+                      style={{ fontSize: 11, padding: '5px 10px', borderRadius: 7, background: 'var(--accent-glow)', color: 'var(--accent-2)', border: '1px solid var(--accent-glow-2)', display: 'flex', alignItems: 'center', gap: 5, fontWeight: 600 }}
                     >
                       {CAMERA_ICON && <span style={{ display: 'flex', alignItems: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></span>}
                       Retake
@@ -389,7 +389,7 @@ export default function ScanPage() {
               {/* Idle — Ready to scan */}
               {status === 'idle' && (
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: isMobile ? '20px 16px' : 28, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center' }}>
-                  <div style={{ width: 48, height: 48, borderRadius: 13, background: 'var(--accent-glow)', border: '1px solid rgba(91,110,245,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
+                  <div style={{ width: 48, height: 48, borderRadius: 13, background: 'var(--accent-glow)', border: '1px solid var(--accent-glow-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
                   </div>
                   <div>
@@ -402,7 +402,7 @@ export default function ScanPage() {
                   </div>
                   <button
                     onClick={runScan}
-                    style={{ padding: '12px 36px', borderRadius: 11, fontWeight: 700, fontSize: 14, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 20px rgba(91,110,245,0.35)', letterSpacing: '-0.01em', width: isMobile ? '100%' : 'auto' }}
+                    style={{ padding: '12px 36px', borderRadius: 11, fontWeight: 700, fontSize: 14, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 20px var(--accent-glow-2)', letterSpacing: '-0.01em', width: isMobile ? '100%' : 'auto' }}
                   >
                     Start Scan
                   </button>
@@ -554,7 +554,7 @@ export default function ScanPage() {
           <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.04em', color: 'var(--green)', marginBottom: 8 }}>Saved successfully!</h2>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>{editedTxs.length} transactions added to your financial history</p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button onClick={reset} style={{ padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)' }}>Scan Again</button>
+            <button onClick={reset} style={{ padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px var(--accent-glow-2)' }}>Scan Again</button>
             <a href="/dashboard/transactions" style={{ padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>View Transactions →</a>
           </div>
         </div>

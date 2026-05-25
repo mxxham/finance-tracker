@@ -148,7 +148,7 @@ export default function Sidebar() {
                       display: 'flex', alignItems: 'center', gap: 10,
                       padding: '12px 14px', borderRadius: 12,
                       background: active ? 'var(--accent-glow)' : 'var(--surface-2)',
-                      border: `1px solid ${active ? 'rgba(91,110,245,0.25)' : 'var(--border)'}`,
+                      border: `1px solid ${active ? 'var(--accent-glow-2)' : 'var(--border)'}`,
                       color: active ? 'var(--accent-2)' : 'var(--text-soft)', textDecoration: 'none',
                     }}>
                       <span style={{ width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: active ? 1 : 0.7 }}>{NAV_ICONS[item.iconKey]}</span>
@@ -246,14 +246,14 @@ export default function Sidebar() {
 
       <div ref={navContainerRef} style={{ flex: 1, padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto', position: 'relative' }}>
         {ready && (
-          <div style={{ position: 'absolute', left: 10, right: 10, top: activeY, height: activeH, borderRadius: 10, background: 'var(--accent-glow)', border: '1px solid rgba(91,110,245,0.25)', transition: 'top 0.3s cubic-bezier(0.34,1.1,0.64,1), height 0.3s ease', pointerEvents: 'none', zIndex: 0 }} />
+          <div style={{ position: 'absolute', left: 10, right: 10, top: activeY, height: activeH, borderRadius: 10, background: 'var(--accent-glow)', border: '1px solid var(--accent-glow-2)', transition: 'top 0.3s cubic-bezier(0.34,1.1,0.64,1), height 0.3s ease', pointerEvents: 'none', zIndex: 0 }} />
         )}
         {nav.map(({ href, label, iconKey, highlight }, idx) => {
           const active = pathname === href;
           return (
             <Link key={href} href={href} ref={el => { navRefs.current[idx] = el; }} title={collapsed ? label : undefined}
               onMouseMove={e => handleNavMouseMove(e, idx)} onMouseLeave={() => handleNavMouseLeave(idx)}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: collapsed ? '10px 0' : '9px 10px', justifyContent: collapsed ? 'center' : 'flex-start', borderRadius: 10, color: active ? 'var(--accent-2)' : 'var(--text-soft)', textDecoration: 'none', transition: 'background 0.15s ease, color 0.15s ease', position: 'relative', zIndex: 1, whiteSpace: 'nowrap', background: highlight && !active ? 'linear-gradient(135deg, rgba(91,110,245,0.07), rgba(167,139,250,0.07))' : 'transparent', ...(highlight && !active ? { border: '1px solid rgba(91,110,245,0.15)', marginTop: 6 } : { border: '1px solid transparent', marginTop: 0 }) }}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: collapsed ? '10px 0' : '9px 10px', justifyContent: collapsed ? 'center' : 'flex-start', borderRadius: 10, color: active ? 'var(--accent-2)' : 'var(--text-soft)', textDecoration: 'none', transition: 'background 0.15s ease, color 0.15s ease', position: 'relative', zIndex: 1, whiteSpace: 'nowrap', background: highlight && !active ? 'linear-gradient(135deg, var(--accent-glow), var(--accent-glow))' : 'transparent', ...(highlight && !active ? { border: '1px solid var(--accent-glow)', marginTop: 6 } : { border: '1px solid transparent', marginTop: 0 }) }}
               onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.color = 'var(--text)'; (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'; } }}
             >
               <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: active ? 1 : 0.7, transition: 'opacity 0.15s' }}>{NAV_ICONS[iconKey]}</span>
@@ -267,7 +267,7 @@ export default function Sidebar() {
       <div style={{ padding: '12px 10px', borderTop: '1px solid var(--border)' }}>
         {!collapsed && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 10px', borderRadius: 10, background: 'var(--surface-2)', marginBottom: 6, transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease', border: '1px solid transparent' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.015)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(91,110,245,0.2)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 1px rgba(91,110,245,0.1)'; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.015)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent-glow-2)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 1px var(--accent-glow)'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; (e.currentTarget as HTMLElement).style.borderColor = 'transparent'; (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}
           >
             <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), var(--purple))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'white', flexShrink: 0 }}>{initials}</div>

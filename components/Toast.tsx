@@ -31,7 +31,7 @@ const ICONS = {
 const STYLES = {
   success: { accent: '#22d47a', bg: 'rgba(34,212,122,0.08)', border: 'rgba(34,212,122,0.2)' },
   error:   { accent: '#f05252', bg: 'rgba(240,82,82,0.08)',  border: 'rgba(240,82,82,0.2)'  },
-  info:    { accent: '#5b6ef5', bg: 'rgba(91,110,245,0.08)', border: 'rgba(91,110,245,0.2)' },
+  info:    { accent: 'var(--accent)', bg: 'var(--accent-glow)', border: 'var(--accent-glow-2)' },
 };
 
 export default function ToastContainer() {

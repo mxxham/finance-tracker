@@ -97,7 +97,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
         <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-soft)', marginBottom: 4 }}>No recurring transactions</p>
         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Set up salary, rent, subscriptions — anything that repeats.</p>
       </div>
-      <button onClick={onAdd} style={{ padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)' }}>
+      <button onClick={onAdd} style={{ padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px var(--accent-glow-2)' }}>
         + Add First Recurring
       </button>
     </div>
@@ -258,7 +258,7 @@ export default function RecurringPage() {
           <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', margin: 0 }}>Recurring</h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>Automate bills, salary, subscriptions and more</p>
         </div>
-        <button onClick={openAdd} style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.28)', whiteSpace: 'nowrap' }}>
+        <button onClick={openAdd} style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px var(--accent-glow-2)', whiteSpace: 'nowrap' }}>
           + Add Recurring <span style={{ opacity: 0.6, fontSize: 11, fontWeight: 500 }}>N</span>
         </button>
       </div>
@@ -319,7 +319,7 @@ export default function RecurringPage() {
             background: filter === key ? 'var(--accent)' : 'var(--surface)',
             color: filter === key ? 'white' : 'var(--text-muted)',
             border: `1px solid ${filter === key ? 'var(--accent)' : 'var(--border)'}`,
-            boxShadow: filter === key ? '0 2px 8px rgba(91,110,245,0.25)' : 'none',
+            boxShadow: filter === key ? '0 2px 8px var(--accent-glow-2)' : 'none',
           }}>
             {label} <span style={{ opacity: 0.65, fontSize: 11 }}>{count}</span>
           </button>
@@ -376,7 +376,7 @@ export default function RecurringPage() {
                       {item.description}
                     </span>
                     {item.auto_post && (
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 5, background: 'rgba(91,110,245,0.15)', color: 'var(--accent)', border: '1px solid rgba(91,110,245,0.2)' }}>AUTO</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 5, background: 'var(--accent-glow)', color: 'var(--accent)', border: '1px solid var(--accent-glow)' }}>AUTO</span>
                     )}
                     {!item.is_active && (
                       <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 5, background: 'var(--surface-3)', color: 'var(--text-muted)' }}>PAUSED</span>
@@ -420,7 +420,7 @@ export default function RecurringPage() {
                       onClick={() => handlePostNow(item.id)}
                       disabled={actionLoading === item.id}
                       title="Post this transaction to your ledger now"
-                      style={{ fontSize: 11, padding: '5px 10px', borderRadius: 7, background: (isOverdue || isDueSoon) ? 'rgba(91,110,245,0.15)' : 'var(--surface-2)', color: (isOverdue || isDueSoon) ? 'var(--accent)' : 'var(--text-muted)', border: `1px solid ${(isOverdue || isDueSoon) ? 'rgba(91,110,245,0.25)' : 'var(--border-2)'}`, fontWeight: 600, opacity: actionLoading === item.id ? 0.5 : 1 }}>
+                      style={{ fontSize: 11, padding: '5px 10px', borderRadius: 7, background: (isOverdue || isDueSoon) ? 'var(--accent-glow)' : 'var(--surface-2)', color: (isOverdue || isDueSoon) ? 'var(--accent)' : 'var(--text-muted)', border: `1px solid ${(isOverdue || isDueSoon) ? 'var(--accent-glow-2)' : 'var(--border-2)'}`, fontWeight: 600, opacity: actionLoading === item.id ? 0.5 : 1 }}>
                       {actionLoading === item.id ? '…' : 'Post'}
                     </button>
                   )}
@@ -582,7 +582,7 @@ export default function RecurringPage() {
               <button onClick={() => setShowModal(false)} style={{ flex: 1, padding: '12px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
                 Cancel
               </button>
-              <button onClick={handleSave} style={{ flex: 2, padding: '12px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)' }}>
+              <button onClick={handleSave} style={{ flex: 2, padding: '12px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px var(--accent-glow-2)' }}>
                 {editItem ? 'Save Changes' : 'Add Recurring'}
               </button>
             </div>

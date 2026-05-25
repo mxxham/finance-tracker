@@ -13,7 +13,7 @@ import { THEMES, applyTheme } from '@/lib/themes';
 function SectionTitle({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-      <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent-glow)', border: '1px solid rgba(91,110,245,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>{icon}</div>
+      <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent-glow)', border: '1px solid var(--accent-glow-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>{icon}</div>
       <div>
         <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.03em' }}>{title}</div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{subtitle}</div>
@@ -71,7 +71,7 @@ function SaveRow({ onSave, saving, label = 'Save changes' }: { onSave: () => voi
       <button
         onClick={onSave}
         disabled={saving}
-        style={{ padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)', opacity: saving ? 0.6 : 1, transition: 'all 0.18s ease', letterSpacing: '-0.01em' }}
+        style={{ padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px var(--accent-glow-2)', opacity: saving ? 0.6 : 1, transition: 'all 0.18s ease', letterSpacing: '-0.01em' }}
       >
         {saving ? 'Saving…' : label}
       </button>
@@ -463,7 +463,7 @@ export default function SettingsPage() {
 
               {/* Current selection preview */}
               {selectedCurrency && (
-                <div style={{ padding: '14px 16px', borderRadius: 10, background: 'var(--accent-glow)', border: '1px solid rgba(91,110,245,0.2)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ padding: '14px 16px', borderRadius: 10, background: 'var(--accent-glow)', border: '1px solid var(--accent-glow)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-mono)', minWidth: 40, textAlign: 'center' }}>{selectedCurrency.symbol}</div>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{selectedCurrency.name}</div>
@@ -493,7 +493,7 @@ export default function SettingsPage() {
                       display: 'flex', alignItems: 'center', gap: 10,
                       padding: '10px 12px', borderRadius: 10, border: 'none', textAlign: 'left',
                       background: currency === c.code ? 'var(--accent-glow)' : 'var(--surface-2)',
-                      outline: currency === c.code ? '1px solid rgba(91,110,245,0.4)' : '1px solid var(--border)',
+                      outline: currency === c.code ? '1px solid var(--accent)' : '1px solid var(--border)',
                       transition: 'all 0.15s ease',
                     }}
                     onMouseEnter={e => { if (currency !== c.code) (e.currentTarget as HTMLElement).style.outlineColor = 'var(--border-2)'; }}
@@ -544,7 +544,7 @@ export default function SettingsPage() {
                 const fromSym = CURRENCIES.find(c => c.code === settings.currency)?.symbol || settings.currency;
                 const toSym = CURRENCIES.find(c => c.code === currency)?.symbol || currency;
                 return (
-                  <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(91,110,245,0.06)', border: '1px solid rgba(91,110,245,0.2)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ padding: '12px 14px', borderRadius: 10, background: 'var(--accent-glow)', border: '1px solid var(--accent-glow)', display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontSize: 16 }}>↔</span>
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
                       <span style={{ fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>{fromSym}{exampleFrom.toLocaleString()}</span>
@@ -579,7 +579,7 @@ export default function SettingsPage() {
                           padding: '10px 0', borderRadius: 9, border: 'none', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-mono)',
                           background: payday === d ? 'var(--accent)' : isLate ? 'var(--surface-3)' : 'var(--surface-2)',
                           color: payday === d ? 'white' : isLate ? 'var(--text-soft)' : 'var(--text-muted)',
-                          boxShadow: payday === d ? '0 4px 16px rgba(91,110,245,0.3)' : 'none',
+                          boxShadow: payday === d ? '0 4px 16px var(--accent-glow-2)' : 'none',
                           outline: isLate && payday !== d ? '1px dashed var(--border-2)' : 'none',
                           transition: 'all 0.15s ease',
                           position: 'relative',
@@ -846,7 +846,7 @@ export default function SettingsPage() {
                         }
                       }}
                       disabled={notifLoading || !notifSupported}
-                      style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 14px rgba(91,110,245,0.35)', opacity: (notifLoading || !notifSupported) ? 0.6 : 1, whiteSpace: 'nowrap' }}
+                      style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 14px var(--accent-glow-2)', opacity: (notifLoading || !notifSupported) ? 0.6 : 1, whiteSpace: 'nowrap' }}
                     >
                       {notifLoading ? 'Requesting…' : 'Request permission'}
                     </button>
@@ -907,7 +907,7 @@ export default function SettingsPage() {
 
                   {/* DEFAULT — not yet asked */}
                   {notifPermission === 'default' && (
-                    <div style={{ padding: '16px', borderRadius: 12, background: 'var(--accent-glow)', border: '1px solid rgba(91,110,245,0.2)', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ padding: '16px', borderRadius: 12, background: 'var(--accent-glow)', border: '1px solid var(--accent-glow)', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                       <div style={{ flex: 1, minWidth: 160 }}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-2)', marginBottom: 3 }}>Enable push notifications</div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
@@ -917,7 +917,7 @@ export default function SettingsPage() {
                       <button
                         onClick={handleEnableNotifications}
                         disabled={notifLoading}
-                        style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 14px rgba(91,110,245,0.35)', opacity: notifLoading ? 0.6 : 1, whiteSpace: 'nowrap', flexShrink: 0 }}
+                        style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 14px var(--accent-glow-2)', opacity: notifLoading ? 0.6 : 1, whiteSpace: 'nowrap', flexShrink: 0 }}
                       >
                         {notifLoading ? 'Enabling…' : '🔔 Enable'}
                       </button>
@@ -995,7 +995,7 @@ export default function SettingsPage() {
                     <button
                       onClick={handleCheckNow}
                       disabled={notifLoading}
-                      style={{ padding: '9px 16px', borderRadius: 9, fontSize: 12, fontWeight: 600, background: 'var(--accent-glow)', color: 'var(--accent-2)', border: '1px solid rgba(91,110,245,0.2)', whiteSpace: 'nowrap', opacity: notifLoading ? 0.6 : 1 }}
+                      style={{ padding: '9px 16px', borderRadius: 9, fontSize: 12, fontWeight: 600, background: 'var(--accent-glow)', color: 'var(--accent-2)', border: '1px solid var(--accent-glow)', whiteSpace: 'nowrap', opacity: notifLoading ? 0.6 : 1 }}
                     >
                       {notifLoading ? 'Checking…' : '⚡ Check now'}
                     </button>

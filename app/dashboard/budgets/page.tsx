@@ -563,7 +563,7 @@ export default function BudgetsPage() {
           )}
           <button
             onClick={() => { setForm({ category_id: '', amount: '' }); setShowModal(true); }}
-            style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)', whiteSpace: 'nowrap' }}>
+            style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px var(--accent-glow-2)', whiteSpace: 'nowrap' }}>
             + Add Budget
           </button>
         </div>
@@ -571,8 +571,8 @@ export default function BudgetsPage() {
 
       {/* ── Rollover Banner ── */}
       {!loading && canRollover && !rolloverDismissed && (
-        <div style={{ background: 'var(--surface)', border: '1.5px solid rgba(91,110,245,0.25)', borderRadius: 14, padding: '14px 18px', display: 'flex', gap: 14, alignItems: 'flex-start', position: 'relative' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(91,110,245,0.12)', border: '1.5px solid rgba(91,110,245,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--accent)' }}>
+        <div style={{ background: 'var(--surface)', border: '1.5px solid var(--accent-glow)', borderRadius: 14, padding: '14px 18px', display: 'flex', gap: 14, alignItems: 'flex-start', position: 'relative' }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent-glow)', border: '1.5px solid var(--accent-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--accent)' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/>
               <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
@@ -671,7 +671,7 @@ export default function BudgetsPage() {
               </div>
               <button
                 onClick={() => { setForm({ category_id: '', amount: '' }); setShowModal(true); }}
-                style={{ padding: '12px 24px', borderRadius: 10, fontSize: 14, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.35)', alignSelf: 'flex-start' }}>
+                style={{ padding: '12px 24px', borderRadius: 10, fontSize: 14, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px var(--accent-glow-2)', alignSelf: 'flex-start' }}>
                 Create your first budget &rarr;
               </button>
             </div>
@@ -740,7 +740,7 @@ export default function BudgetsPage() {
                   width: `${Math.min(overallPct, 100)}%`,
                   background: `linear-gradient(90deg, var(--accent), ${overallPct >= 100 ? 'var(--red)' : overallPct >= 80 ? 'var(--amber)' : 'var(--green)'})`,
                   transition: 'width 1s cubic-bezier(0.34,1.1,0.64,1)',
-                  boxShadow: `0 0 14px ${overallPct >= 80 ? 'rgba(240,82,82,0.35)' : 'rgba(91,110,245,0.35)'}`,
+                  boxShadow: `0 0 14px ${overallPct >= 80 ? 'rgba(240,82,82,0.35)' : 'var(--accent-glow-2)'}`,
                 }} />
                 {isCurrentMonth && (
                   <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${monthProgress}%`, width: 2, background: 'rgba(255,255,255,0.25)' }} title="Month progress" />
@@ -1253,7 +1253,7 @@ export default function BudgetsPage() {
                     height: '100%', borderRadius: 99,
                     width: `${Math.min((recurringTotal / totalBudget) * 100, 100)}%`,
                     background: 'var(--purple)', transition: 'width 0.9s ease',
-                    boxShadow: '0 0 10px rgba(167,139,250,0.35)',
+                    boxShadow: '0 0 10px var(--accent-glow-2)',
                   }} />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>
@@ -1273,7 +1273,7 @@ export default function BudgetsPage() {
                 </div>
               </div>
             )}
-            <div style={{ ...card, background: 'linear-gradient(135deg, rgba(91,110,245,0.06) 0%, var(--surface) 60%)', border: '1px solid rgba(91,110,245,0.15)' }}>
+            <div style={{ ...card, background: 'linear-gradient(135deg, var(--accent-glow) 0%, var(--surface) 60%)', border: '1px solid var(--accent-glow)' }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
                 Month Progress
               </div>
@@ -1337,7 +1337,7 @@ export default function BudgetsPage() {
             </div>
             <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
               <button onClick={() => setShowModal(false)} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleSave} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)', cursor: 'pointer' }}>Save Budget</button>
+              <button onClick={handleSave} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px var(--accent-glow-2)', cursor: 'pointer' }}>Save Budget</button>
             </div>
           </div>
         </div>

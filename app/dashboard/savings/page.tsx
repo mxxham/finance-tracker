@@ -808,7 +808,7 @@ export default function SavingsPage() {
         </div>
         <button
           onClick={() => setShowNewModal(true)}
-          style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+          style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px var(--accent-glow-2)', whiteSpace: 'nowrap', flexShrink: 0 }}>
           + New Goal
         </button>
       </div>
@@ -899,7 +899,7 @@ export default function SavingsPage() {
               <div key={item} style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)' }}>{item}</div>
             ))}
           </div>
-          <button onClick={() => setShowNewModal(true)} style={{ padding: '11px 24px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px rgba(91,110,245,0.3)' }}>
+          <button onClick={() => setShowNewModal(true)} style={{ padding: '11px 24px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px var(--accent-glow-2)' }}>
             Create your first goal →
           </button>
         </div>

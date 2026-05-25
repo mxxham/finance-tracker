@@ -920,7 +920,7 @@ return createPortal(
                       cursor: cell.day ? 'pointer' : 'auto',
                       transition: 'transform 0.1s, border-color 0.15s',
                       position: 'relative',
-                      boxShadow: isSelected ? '0 0 0 3px rgba(91,110,245,0.25)' : 'none',
+                      boxShadow: isSelected ? '0 0 0 3px var(--accent-glow-2)' : 'none',
                     }}
                     onMouseEnter={e => { if (cell.day) (e.currentTarget as HTMLElement).style.transform = 'scale(1.12)'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'none'; }}
@@ -1027,7 +1027,7 @@ overflow: 'hidden', animation: 'slideUpSheet 0.22s cubic-bezier(0.34,1.2,0.64,1)
           )}
           {budgetVsActual.length > 0 && (
             <div style={{ display: 'flex', gap: 16, marginTop: 10, justifyContent: 'center' }}>
-              {[{c:'rgba(91,110,245,0.4)',l:'Budget'},{c:'#22d47a',l:'Actual'}].map(({c,l}) => (
+              {[{c:'var(--accent-glow-2)',l:'Budget'},{c:'#22d47a',l:'Actual'}].map(({c,l}) => (
                 <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-muted)' }}>
                   <div style={{ width: 10, height: 10, borderRadius: 2, background: c }} />{l}
                 </div>
