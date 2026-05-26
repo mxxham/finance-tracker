@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { showToast } from '@/components/Toast';
+import { AmountInput } from '@/components/AmountInput';
 import { useSettings } from '@/lib/SettingsContext';
 import { BalanceCard } from '@/components/BalanceCard';
 
@@ -508,7 +509,7 @@ export default function RecurringPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={LABEL_STYLE}>Amount (IDR) *</label>
-                <input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0" autoFocus min="0" style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-mono)' }} />
+                <AmountInput value={form.amount} onChange={v => setForm(f => ({ ...f, amount: v }))} placeholder="0" autoFocus style={{ fontSize: 18, fontWeight: 700 }} />
               </div>
               <div>
                 <label style={LABEL_STYLE}>Category</label>
