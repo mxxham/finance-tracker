@@ -1,4 +1,5 @@
 'use client';
+import OnboardingFlow from '@/components/OnboardingFlow';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
@@ -210,6 +211,8 @@ function TiltStatCard({
       </div>
       <div style={{ marginTop: 6, fontSize: 10, color: 'var(--text-muted)' }}>{pct.toFixed(0)}% of income</div>
     </div>
+  );
+  </>
   );
 }
 
@@ -532,6 +535,8 @@ export default function DashboardPage() {
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [userName, setUserName] = useState('');
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [modalExiting, setModalExiting] = useState(false);
   const [categories, setCategories] = useState<{ id: number; name: string; color: string; type: string }[]>([]);
@@ -688,6 +693,13 @@ export default function DashboardPage() {
     : [];
 
   return (
+    <>
+    {showOnboarding && (
+      <OnboardingFlow
+        userName={userName}
+        onComplete={() => { setShowOnboarding(false); void load(); }}
+      />
+    )}
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* ── Header ── */}
       <div
@@ -1170,4 +1182,4 @@ export default function DashboardPage() {
       )}
     </div>
   );
-            }
+  }
