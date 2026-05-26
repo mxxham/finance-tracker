@@ -118,12 +118,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => clearTimeout(timer);
   }, [user, loading, settings.budget_alerts, settings.budget_alert_threshold]);
 
+  // Nav order for determining slide direction
+  const NAV_ORDER = [
+    '/dashboard',
+    '/dashboard/transactions',
+    '/dashboard/budgets',
+    '/dashboard/savings',
+    '/dashboard/analytics',
+    '/dashboard/recurring',
+    '/dashboard/categories',
+    '/dashboard/scan',
+    '/dashboard/settings',
+  ];
+
   useEffect(() => {
-    if (prevPath.current && prevPath.current !== pathname && mainRef.current) {
-      mainRef.current.classList.remove('page-enter');
-      void mainRef.current.offsetWidth;
-      mainRef.current.classList.add('page-enter');
+    if (!prevPath.current || prevPath.current === pathname || !mainRef.current) {
+      prevPath.current = pathname;
+      return;
     }
+    const prev = prevPath.current;
+    const prevIdx = NAV_ORDER.indexOf(prev);
+    const nextIdx = NAV_ORDER.indexOf(pathname);
+    const goingForward = nextIdx > prevIdx || prevIdx === -1;
+
+    const el = mainRef.current;
+    el.classList.remove('page-enter', 'page-enter-back');
+    void el.offsetWidth; // force reflow
+    el.classList.add(goingForward ? 'page-enter' : 'page-enter-back');
+
     prevPath.current = pathname;
   }, [pathname]);
 
