@@ -193,6 +193,15 @@ export default function TransactionsPage() {
   const [form, setForm] = useState({ amount: '', type: 'expense', description: '', date: now.toISOString().split('T')[0], category_id: '' });
   const [budgets, setBudgets] = useState<{ id: number; amount: number; spent: number; category_id: number; category_name: string; category_color: string }[]>([]);
 
+  const handleExport = (format: 'csv' | 'pdf') => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('ft_token') : null;
+    if (!token) return;
+    const params = new URLSearchParams({ format, month: String(month), year: String(year) });
+    if (filterType) params.set('type', filterType);
+    // Open export URL — browser handles download (CSV) or print dialog (PDF)
+    window.open(`/api/export?${params.toString()}&token=${token}`, '_blank');
+  };
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -560,4 +569,4 @@ export default function TransactionsPage() {
       })()}
     </div>
   );
-}
+               }
