@@ -310,7 +310,12 @@ export default function TransactionsPage() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button onClick={exportCSV} style={{ padding: '10px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-soft)', border: '1px solid var(--border-2)' }}>↓ CSV</button>
+          <button onClick={() => handleExport('csv')} title="Download CSV spreadsheet" style={{ padding: '10px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-soft)', border: '1px solid var(--border-2)', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span>↓</span> CSV
+          </button>
+          <button onClick={() => handleExport('pdf')} title="Open PDF report in new tab" style={{ padding: '10px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-soft)', border: '1px solid var(--border-2)', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span>↓</span> PDF
+          </button>
           <button onClick={openAdd} style={{ padding: '10px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px var(--accent-glow-2)' }}>+ Add</button>
         </div>
       </div>
