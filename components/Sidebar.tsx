@@ -179,34 +179,70 @@ export default function Sidebar() {
           background: 'var(--surface)', borderTop: '1px solid var(--border)',
           display: 'flex', alignItems: 'stretch', zIndex: 50,
           paddingBottom: 'env(safe-area-inset-bottom)',
+          backdropFilter: 'blur(12px)',
         }}>
-          {primaryItems.map(item => {
+          {/* Sliding pill indicator */}
+          {(() => {
+            const allItems = [...primaryItems, { href: '__more__', iconKey: 'more', label: 'More' }];
+            const activeIdx = moreOpen ? allItems.length - 1 : primaryItems.findIndex(i => i.href === pathname);
+            const pillLeft = activeIdx >= 0 ? `calc(${activeIdx} * (100% / ${allItems.length}) + (100% / ${allItems.length} / 2) - 28px)` : '-100px';
+            return (
+              <div style={{
+                position: 'absolute', top: 8, height: 36, width: 56,
+                borderRadius: 12,
+                background: 'var(--accent-glow)',
+                border: '1px solid var(--accent-glow-2)',
+                left: pillLeft,
+                transition: 'left 0.35s cubic-bezier(0.34,1.15,0.64,1), opacity 0.2s ease',
+                opacity: activeIdx >= 0 ? 1 : 0,
+                pointerEvents: 'none',
+                zIndex: 0,
+              }} />
+            );
+          })()}
+          {primaryItems.map((item, idx) => {
             const active = pathname === item.href;
             return (
               <Link key={item.href} href={item.href} style={{
                 flex: 1, display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center', gap: 4,
-                textDecoration: 'none', position: 'relative',
-                color: active ? 'var(--accent-2)' : 'var(--text-muted)',
-                transition: 'color 0.15s ease',
+                alignItems: 'center', justifyContent: 'center', gap: 3,
+                textDecoration: 'none', position: 'relative', zIndex: 1,
+                color: active ? 'var(--accent)' : 'var(--text-muted)',
+                transition: 'color 0.2s ease',
               }}>
-                {active && <span style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 32, height: 2, borderRadius: '0 0 2px 2px', background: 'var(--accent)' }} />}
-                {item.highlight && !active && <span style={{ position: 'absolute', top: 10, right: 'calc(50% - 18px)', width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />}
-                <span style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: active ? 'scale(1.12)' : 'scale(1)', transition: 'transform 0.2s cubic-bezier(0.34,1.3,0.64,1)' }}>{NAV_ICONS[item.iconKey]}</span>
-                <span style={{ fontSize: 10, fontWeight: active ? 600 : 400 }}>{item.label}</span>
+                {item.highlight && !active && (
+                  <span style={{ position: 'absolute', top: 8, right: 'calc(50% - 16px)', width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse-calm 2s ease infinite' }} />
+                )}
+                <span style={{
+                  width: 22, height: 22,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transform: active ? 'scale(1.18) translateY(-1px)' : 'scale(1)',
+                  transition: 'transform 0.3s cubic-bezier(0.34,1.4,0.64,1)',
+                  filter: active ? 'drop-shadow(0 0 6px var(--accent-glow-2))' : 'none',
+                }}>{NAV_ICONS[item.iconKey]}</span>
+                <span style={{
+                  fontSize: 10, fontWeight: active ? 700 : 400,
+                  transform: active ? 'scale(1.05)' : 'scale(1)',
+                  transition: 'transform 0.2s ease, font-weight 0.1s',
+                  letterSpacing: active ? '-0.01em' : '0',
+                }}>{item.label}</span>
               </Link>
             );
           })}
           {/* More button */}
           <button onClick={() => setMoreOpen(v => !v)} style={{
             flex: 1, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', gap: 4,
-            background: 'none', border: 'none',
-            color: moreOpen ? 'var(--accent-2)' : 'var(--text-muted)',
-            transition: 'color 0.15s ease', padding: 0,
+            alignItems: 'center', justifyContent: 'center', gap: 3,
+            background: 'none', border: 'none', position: 'relative', zIndex: 1,
+            color: moreOpen ? 'var(--accent)' : 'var(--text-muted)',
+            transition: 'color 0.2s ease', padding: 0, cursor: 'pointer',
           }}>
-            <span style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{NAV_ICONS.more}</span>
-            <span style={{ fontSize: 10, fontWeight: moreOpen ? 600 : 400 }}>More</span>
+            <span style={{
+              width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transform: moreOpen ? 'scale(1.18) translateY(-1px) rotate(90deg)' : 'scale(1)',
+              transition: 'transform 0.3s cubic-bezier(0.34,1.4,0.64,1)',
+            }}>{NAV_ICONS.more}</span>
+            <span style={{ fontSize: 10, fontWeight: moreOpen ? 700 : 400, transition: 'font-weight 0.1s' }}>More</span>
           </button>
         </nav>
       </>
@@ -290,4 +326,4 @@ export default function Sidebar() {
       </div>
     </aside>
   );
-}
+                  }
