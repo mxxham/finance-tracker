@@ -176,7 +176,7 @@ const MODAL_BOX: React.CSSProperties = {
 };
 
 export default function TransactionsPage() {
-  const { fmt } = useSettings();
+  const { fmt, settings } = useSettings();
   const isMobile = useIsMobile();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -196,9 +196,8 @@ export default function TransactionsPage() {
   const handleExport = (format: 'csv' | 'pdf') => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('ft_token') : null;
     if (!token) return;
-    const params = new URLSearchParams({ format, month: String(month), year: String(year) });
+    const params = new URLSearchParams({ format, month: String(month), year: String(year), currency: settings?.currency ?? 'IDR' });
     if (filterType) params.set('type', filterType);
-    // Open export URL — browser handles download (CSV) or print dialog (PDF)
     window.open(`/api/export?${params.toString()}&token=${token}`, '_blank');
   };
 
@@ -569,4 +568,4 @@ export default function TransactionsPage() {
       })()}
     </div>
   );
-               }
+      }
