@@ -212,8 +212,6 @@ function TiltStatCard({
       <div style={{ marginTop: 6, fontSize: 10, color: 'var(--text-muted)' }}>{pct.toFixed(0)}% of income</div>
     </div>
   );
-  </>
-  );
 }
 
 // ── Budget Mini Overview ───────────────────────────────────────────────────
@@ -1181,5 +1179,6 @@ export default function DashboardPage() {
         </div>
       )}
     </div>
+  </>
   );
-  }
+                      }
