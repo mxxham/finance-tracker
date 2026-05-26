@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 
 interface AmountInputProps {
   value: string;
@@ -12,19 +12,13 @@ interface AmountInputProps {
   disabled?: boolean;
 }
 
-// Format a raw number string into a display string with commas
-function formatDisplay(raw: string): string {
-  if (!raw || raw === '') return '';
-  const n = parseFloat(raw.replace(/,/g, ''));
-  if (isNaN(n)) return raw;
-  // Format with locale commas, no decimal for whole numbers
-  const hasDecimal = raw.includes('.');
-  if (hasDecimal) {
-    const [intPart, decPart] = raw.split('.');
-    const formatted = Number(intPart.replace(/,/g, '') || 0).toLocaleString('en-US');
-    return `${formatted}.${decPart.slice(0, 2)}`;
-  }
-  return n.toLocaleString('en-US');
+// Format integer part only with commas — no decimal support needed for most currencies
+function formatWithCommas(raw: string): string {
+  if (!raw) return '';
+  // Strip existing commas, keep only digits
+  const digits = raw.replace(/[^0-9]/g, '');
+  if (!digits) return '';
+  return Number(digits).toLocaleString('en-US');
 }
 
 export function AmountInput({
@@ -37,36 +31,52 @@ export function AmountInput({
   max,
   disabled = false,
 }: AmountInputProps) {
-  const [focused, setFocused] = useState(false);
-  const [displayVal, setDisplayVal] = useState(value ? formatDisplay(value) : '');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Sync display when value prop changes externally
+  // Build the formatted display value from the raw numeric string
+  const formatted = formatWithCommas(value);
+
+  // Sync input display whenever formatted value changes
   useEffect(() => {
-    if (!focused) {
-      setDisplayVal(value ? formatDisplay(value) : '');
+    const el = inputRef.current;
+    if (!el) return;
+    if (el !== document.activeElement) {
+      el.value = formatted;
     }
-  }, [value, focused]);
+  }, [formatted]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value;
-    // Strip everything except digits and one decimal point
-    const cleaned = raw.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
-    setDisplayVal(formatDisplay(cleaned));
-    // Pass the raw numeric string to parent
-    onChange(cleaned);
-  };
+  // Set initial value
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.value = formatted;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleFocus = () => {
-    setFocused(true);
-    // On focus show raw number for easy editing
-    setDisplayVal(value || '');
-  };
+  const handleInput = useCallback((e: React.FormEvent<HTMLInputElement>) => {
+    const el = e.currentTarget;
+    const cursorPos = el.selectionStart ?? 0;
+    const prevFormatted = el.value;
 
-  const handleBlur = () => {
-    setFocused(false);
-    setDisplayVal(value ? formatDisplay(value) : '');
-  };
+    // Strip everything except digits
+    const digits = prevFormatted.replace(/[^0-9]/g, '');
+    const newFormatted = digits ? Number(digits).toLocaleString('en-US') : '';
+
+    // Count how many commas were before the cursor in old value
+    const commasBefore = (prevFormatted.slice(0, cursorPos).match(/,/g) || []).length;
+
+    // Set formatted value
+    el.value = newFormatted;
+
+    // Restore cursor: account for added/removed commas
+    const newCommasBefore = (newFormatted.slice(0, cursorPos).match(/,/g) || []).length;
+    const diff = newCommasBefore - commasBefore;
+    const newCursor = Math.max(0, cursorPos + diff);
+    el.setSelectionRange(newCursor, newCursor);
+
+    // Pass raw digits up to parent
+    onChange(digits);
+  }, [onChange]);
 
   const exceedsMax = max !== undefined && Number(value) > max;
 
@@ -84,14 +94,12 @@ export function AmountInput({
       <input
         ref={inputRef}
         type="text"
-        inputMode="decimal"
-        value={focused ? (value || '') : displayVal}
-        onChange={handleChange}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
+        inputMode="numeric"
         placeholder={placeholder}
         autoFocus={autoFocus}
         disabled={disabled}
+        onInput={handleInput}
+        defaultValue={formatted}
         style={{
           fontFamily: 'var(--font-mono)',
           paddingLeft: currency ? 52 : undefined,
@@ -110,4 +118,3 @@ export function AmountInput({
     </div>
   );
 }
-
