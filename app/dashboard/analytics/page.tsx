@@ -437,7 +437,7 @@ return createPortal(
         chips={[
           { label: 'Monthly Spend', value: stats ? fmt(stats.expenses) : '—', valueColor: '#f87171', sub: 'total expenses' },
           { label: 'Daily Burn', value: stats ? fmt(burnRate) + '/d' : '—', valueColor: '#fbbf24', sub: 'avg daily spend' },
-          { label: 'Projected', value: stats ? fmt(Math.round(projectedExpense)) : '—', valueColor: forecastOver ? '#f87171' : 'white', sub: forecastOver ? 'over budget' : 'month-end estimate' },
+          { label: 'Projected', value: stats ? fmt(Math.round(projectedExpense)) : '—', valueColor: stats && projectedExpense > stats.expenses * 1.1 ? '#f87171' : 'white', sub: stats && projectedExpense > stats.expenses * 1.1 ? 'over budget' : 'month-end estimate' },
           { label: 'Savings Rate', value: stats ? savingsRate + '%' : '—', valueColor: savingsRate >= 20 ? '#4ade80' : '#fbbf24', sub: 'of income saved' },
         ]}
       />
@@ -1199,4 +1199,4 @@ overflow: 'hidden', animation: 'slideUpSheet 0.22s cubic-bezier(0.34,1.2,0.64,1)
       </div>
     </div>
   );
-                             }
+  }
