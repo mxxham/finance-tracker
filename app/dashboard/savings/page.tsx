@@ -716,9 +716,9 @@ export default function SavingsPage() {
       ]);
       setGoals(Array.isArray(data) ? data : []);
 
-      // Available balance = all-time income minus all-time expenses minus already saved in goals
-      const totalSaved = Array.isArray(data) ? data.reduce((s: number, g: SavingsGoal) => s + Number(g.current_amount), 0) : 0;
-      const balance = Math.max(0, Number(stats.balance || 0) - totalSaved);
+      // Available balance = all-time net (income - expenses)
+      // Savings goals track virtual allocations, not actual cash deductions
+      const balance = Math.max(0, Number(stats.balance || 0));
       setAvailableBalance(balance);
 
       // Build spending alerts: budgets >= 80% used
@@ -963,4 +963,4 @@ export default function SavingsPage() {
       )}
     </div>
   );
-}
+         }
