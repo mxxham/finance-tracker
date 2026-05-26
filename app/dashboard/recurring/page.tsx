@@ -266,14 +266,17 @@ export default function RecurringPage() {
       {/* Balance card */}
       <BalanceCard
         balance={balance}
-        monthlyIncome={monthlyStats?.income}
-        monthlyExpenses={monthlyStats?.expenses}
-        projectedBalance={(balance ?? 0) - monthlyExpense}
-        projectedLabel="After recurring"
-        projectedSub="if all expenses post"
+        balanceLabel="Current Balance"
+        balanceSub="All-time income minus expenses"
         loading={loading}
         fmt={fmt}
-        extras={[{ label: 'Active rules', value: String(active.length), sub: 'recurring transactions' }]}
+        variant="full"
+        chips={[
+          { label: 'This month in', value: monthlyStats ? '+' + fmt(monthlyStats.income) : '—', valueColor: '#4ade80', sub: 'actual income' },
+          { label: 'This month out', value: monthlyStats ? '−' + fmt(monthlyStats.expenses) : '—', valueColor: '#f87171', sub: 'actual expenses' },
+          { label: 'After recurring', value: fmt((balance ?? 0) - monthlyExpense), sub: 'if all expenses post' },
+          { label: 'Active rules', value: String(active.length), sub: 'recurring transactions' },
+        ]}
       />
 
       {/* Summary cards */}
@@ -591,4 +594,4 @@ export default function RecurringPage() {
       )}
     </div>
   );
-}
+        }
