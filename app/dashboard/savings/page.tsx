@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { useSettings } from '@/lib/SettingsContext';
 import { BalanceCard } from '@/components/BalanceCard';
 import { showToast } from '@/components/Toast';
+import { AmountInput } from '@/components/AmountInput';
 
 // ── Types ───────────────────────────────────────────────────────
 interface Contribution {
@@ -180,12 +181,12 @@ function GoalModal({ initial, onClose, onSave, saving, fmt }: GoalModalProps) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Target Amount</label>
-            <input type="number" value={target} onChange={e => setTarget(e.target.value)} placeholder="0" min="0" />
+            <AmountInput value={target} onChange={setTarget} placeholder="0" style={{ fontSize: 18, fontWeight: 700 }} />
           </div>
           {!isEdit && (
             <div>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Already Saved</label>
-              <input type="number" value={current} onChange={e => setCurrent(e.target.value)} placeholder="0" min="0" />
+              <AmountInput value={current} onChange={setCurrent} placeholder="0" style={{ fontSize: 18, fontWeight: 700 }} />
             </div>
           )}
         </div>
@@ -304,7 +305,7 @@ function ContributeModal({ goal, mode, availableBalance, onClose, onDone, fmt }:
 
         <div>
           <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Amount</label>
-          <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" autoFocus min="0" max={isAdd ? availableBalance : undefined} style={{ fontSize: 20, fontFamily: 'var(--font-mono)', fontWeight: 700, borderColor: exceedsBalance ? 'var(--red)' : undefined }} />
+          <AmountInput value={amount} onChange={setAmount} placeholder="0" autoFocus max={isAdd ? availableBalance : undefined} style={{ fontSize: 20, fontWeight: 700 }} />
           {exceedsBalance && (
             <div style={{ marginTop: 6, fontSize: 11, color: 'var(--red)', fontWeight: 600 }}>
               ⚠️ Exceeds your available balance of {fmt(availableBalance)}
