@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, RadarChart, Radar, PolarGrid, PolarAngleAxis, ReferenceLine, Legend } from 'recharts';
 import { useSettings } from '@/lib/SettingsContext';
+import { BalanceCard } from '@/components/BalanceCard';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS_OF_WEEK = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -425,29 +426,21 @@ return createPortal(
         </div>
       </div>
 
-      {/* KPI Cards — staggered */}
-      <div className="an-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
-        {loading ? Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className={`animate-fadeUp stagger-${i + 1}`} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 22 }}>
-            <Skeleton w={80} h={10} />
-            <div style={{ marginTop: 12 }}><Skeleton w={110} h={22} /></div>
-            <div style={{ marginTop: 8 }}><Skeleton w={140} h={9} /></div>
-          </div>
-        )) : STAT_CARDS?.map(({ label, value, sub, color }, i) => (
-          <div key={label} className={`animate-fadeUp stagger-${i + 1}`} style={{
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 14, padding: 22,
-            transition: 'border-color 0.2s ease, transform 0.18s ease, box-shadow 0.18s ease',
-          }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 32px rgba(0,0,0,0.3)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'none'; (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}
-          >
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>{label}</div>
-            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.04em', color, fontFamily: 'var(--font-mono)', lineHeight: 1.1 }}>{value}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>{sub}</div>
-          </div>
-        ))}
-      </div>
+      {/* ── Analytics Overview Card ── */}
+      <BalanceCard
+        balance={stats ? Number(stats.balance) : null}
+        balanceLabel="Net Balance"
+        balanceSub="All-time income minus expenses"
+        loading={loading}
+        fmt={fmt}
+        variant="full"
+        chips={[
+          { label: 'Monthly Spend', value: stats ? fmt(stats.expenses) : '—', valueColor: '#f87171', sub: 'total expenses' },
+          { label: 'Daily Burn', value: stats ? fmt(burnRate) + '/d' : '—', valueColor: '#fbbf24', sub: 'avg daily spend' },
+          { label: 'Projected', value: stats ? fmt(Math.round(projectedExpense)) : '—', valueColor: forecastOver ? '#f87171' : 'white', sub: forecastOver ? 'over budget' : 'month-end estimate' },
+          { label: 'Savings Rate', value: stats ? savingsRate + '%' : '—', valueColor: savingsRate >= 20 ? '#4ade80' : '#fbbf24', sub: 'of income saved' },
+        ]}
+      />
 
 
       {/* Payday Survival */}
@@ -1206,4 +1199,4 @@ overflow: 'hidden', animation: 'slideUpSheet 0.22s cubic-bezier(0.34,1.2,0.64,1)
       </div>
     </div>
   );
-}
+                             }
