@@ -584,6 +584,27 @@ export default function DashboardPage() {
     load();
   }, [load]);
 
+  // Check onboarding on first mount
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('ft_token') : null;
+        if (!token) return;
+        // Decode username from JWT payload
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          setUserName(payload?.email?.split('@')[0] || payload?.name || '');
+        } catch {}
+        const res = await fetch('/api/onboarding', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (!data.onboarding_done) setShowOnboarding(true);
+      } catch {}
+    };
+    checkOnboarding();
+  }, []);
+
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeModal();
@@ -1181,4 +1202,4 @@ export default function DashboardPage() {
     </div>
   </>
   );
-                      }
+    }
