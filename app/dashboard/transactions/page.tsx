@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { showToast } from '@/components/Toast';
+import { AmountInput } from '@/components/AmountInput';
 import { useSettings } from '@/lib/SettingsContext';
 import { BalanceCard } from '@/components/BalanceCard';
 
@@ -499,7 +500,7 @@ export default function TransactionsPage() {
             </div>
             <div>
               <label style={LABEL_STYLE}>Amount (IDR)</label>
-              <input type="number" step="1" value={form.amount} onChange={e => setForm(f=>({...f,amount:e.target.value}))} placeholder="0" autoFocus />
+              <AmountInput value={form.amount} onChange={v => setForm(f=>({...f,amount:v}))} placeholder="0" autoFocus style={{ fontSize: 22, fontWeight: 700 }} />
             </div>
             <div>
               <label style={LABEL_STYLE}>Description</label>
