@@ -782,7 +782,7 @@ export default function DashboardPage() {
           { label: 'Income', value: stats ? '+' + fmt(stats.income) : '—', valueColor: '#4ade80', sub: 'this month' },
           { label: 'Expenses', value: stats ? '−' + fmt(stats.expenses) : '—', valueColor: '#f87171', sub: 'this month' },
           { label: 'Saved', value: stats ? fmt(stats.savings) : '—', sub: 'this month' },
-          { label: 'Monthly Net', value: stats ? fmt(stats.monthlyNet ?? (stats.income - stats.expenses)) : '—', valueColor: stats && (stats.income - stats.expenses) >= 0 ? '#4ade80' : '#f87171', sub: 'income − expenses' },
+          { label: 'Monthly Net', value: stats ? fmt(stats.income - stats.expenses) : '—', valueColor: stats && (stats.income - stats.expenses) >= 0 ? '#4ade80' : '#f87171', sub: 'income − expenses' },
         ]}
       />
 
@@ -1170,4 +1170,4 @@ export default function DashboardPage() {
       )}
     </div>
   );
-}
+            }
