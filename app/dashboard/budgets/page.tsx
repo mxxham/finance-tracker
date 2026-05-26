@@ -10,7 +10,7 @@ import { showToast } from '@/components/Toast';
 interface Budget {
   id: number; amount: number; spent: number;
   category_id: number; category_name: string; category_color: string;
-  month: number; year: number;
+  month: number; year: number; repeat_monthly?: boolean;
 }
 interface Category { id: number; name: string; color: string; type: string; }
 interface Transaction {
@@ -283,7 +283,7 @@ export default function BudgetsPage() {
   const [prevBudgets, setPrevBudgets] = useState<Budget[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ category_id: '', amount: '' });
+  const [form, setForm] = useState({ category_id: '', amount: '', repeat_monthly: false });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'insights' | 'trends' | 'recurring'>('overview');
   const [expandedCard, setExpandedCard] = useState<number | null>(null);
@@ -371,7 +371,7 @@ export default function BudgetsPage() {
   const handleSave = async () => {
     if (!form.category_id || !form.amount) { showToast('Fill in all fields', 'error'); return; }
     try {
-      await api.createBudget({ ...form, amount: Number(form.amount), month, year });
+      await api.createBudget({ ...form, amount: Number(form.amount), month, year, repeat_monthly: form.repeat_monthly });
       showToast('Budget saved'); setShowModal(false); load();
     } catch { showToast('Failed to save budget', 'error'); }
   };
@@ -427,7 +427,7 @@ export default function BudgetsPage() {
       const overAmt = Number(b.spent) - Number(b.amount);
       tips.push({
         icon: 'over',
-        title: `${translateCategory(b.category_name)} is over budget`,
+        title: `${translateCategory(b.category_name)}{b.repeat_monthly && <span title='Repeats monthly' style={{fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:4,background:'var(--accent-glow)',color:'var(--accent)',marginLeft:4,border:'1px solid var(--accent-glow-2)'}}>↻</span>} is over budget`,
         body: `You've exceeded your ${fmt(Number(b.amount))} limit by ${fmt(overAmt)}. Pause non-essential spending in this category for the rest of the month.`,
         color: 'var(--red)',
       });
@@ -439,7 +439,7 @@ export default function BudgetsPage() {
       const remaining = Number(b.amount) - Number(b.spent);
       tips.push({
         icon: 'warn',
-        title: `${translateCategory(b.category_name)} is at ${pct}%`,
+        title: `${translateCategory(b.category_name)}{b.repeat_monthly && <span title='Repeats monthly' style={{fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:4,background:'var(--accent-glow)',color:'var(--accent)',marginLeft:4,border:'1px solid var(--accent-glow-2)'}}>↻</span>} is at ${pct}%`,
         body: `Only ${fmt(remaining)} left in this budget${daysLeft > 0 ? ` for ${daysLeft} more days` : ''}. Limit spending here to avoid going over.`,
         color: 'var(--amber)',
       });
@@ -461,7 +461,7 @@ export default function BudgetsPage() {
       const free = Number(b.amount) - Number(b.spent);
       tips.push({
         icon: 'tip',
-        title: `${translateCategory(b.category_name)} budget is barely used`,
+        title: `${translateCategory(b.category_name)}{b.repeat_monthly && <span title='Repeats monthly' style={{fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:4,background:'var(--accent-glow)',color:'var(--accent)',marginLeft:4,border:'1px solid var(--accent-glow-2)'}}>↻</span>} budget is barely used`,
         body: `You've only used ${Math.round((Number(b.spent) / Number(b.amount)) * 100)}% of this budget. Consider moving ${fmt(free)} to a category that's running low.`,
         color: 'var(--green)',
       });
@@ -552,7 +552,7 @@ export default function BudgetsPage() {
             </button>
           )}
           <button
-            onClick={() => { setForm({ category_id: '', amount: '' }); setShowModal(true); }}
+            onClick={() => { setForm({ category_id: '', amount: '', repeat_monthly: false }); setShowModal(true); }}
             style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px var(--accent-glow-2)', whiteSpace: 'nowrap' }}>
             + Add Budget
           </button>
@@ -660,7 +660,7 @@ export default function BudgetsPage() {
                 ))}
               </div>
               <button
-                onClick={() => { setForm({ category_id: '', amount: '' }); setShowModal(true); }}
+                onClick={() => { setForm({ category_id: '', amount: '', repeat_monthly: false }); setShowModal(true); }}
                 style={{ padding: '12px 24px', borderRadius: 10, fontSize: 14, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px var(--accent-glow-2)', alignSelf: 'flex-start' }}>
                 Create your first budget &rarr;
               </button>
@@ -698,7 +698,7 @@ export default function BudgetsPage() {
                 return (
                   <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                     <div style={{ width: 8, height: 8, borderRadius: 2, background: b.category_color, flexShrink: 0 }} />
-                    <span style={{ fontSize: 11, color: 'var(--text-soft)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{translateCategory(b.category_name)}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-soft)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{translateCategory(b.category_name)}{b.repeat_monthly && <span title='Repeats monthly' style={{fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:4,background:'var(--accent-glow)',color:'var(--accent)',marginLeft:4,border:'1px solid var(--accent-glow-2)'}}>↻</span>}</span>
                     <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{pct}%</span>
                   </div>
                 );
@@ -814,7 +814,7 @@ export default function BudgetsPage() {
                       {translateCategory(b.category_name)[0]}
                     </div>
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 3 }}>{translateCategory(b.category_name)}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 3 }}>{translateCategory(b.category_name)}{b.repeat_monthly && <span title='Repeats monthly' style={{fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:4,background:'var(--accent-glow)',color:'var(--accent)',marginLeft:4,border:'1px solid var(--accent-glow-2)'}}>↻</span>}</div>
                       <HealthDot score={healthSc} />
                     </div>
                   </div>
@@ -917,7 +917,7 @@ export default function BudgetsPage() {
                       <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <div style={{ width: 6, height: 6, borderRadius: '50%', background: b.category_color }} />
-                          <span style={{ fontSize: 11, color: 'var(--text-soft)' }}>{translateCategory(b.category_name)}</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-soft)' }}>{translateCategory(b.category_name)}{b.repeat_monthly && <span title='Repeats monthly' style={{fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:4,background:'var(--accent-glow)',color:'var(--accent)',marginLeft:4,border:'1px solid var(--accent-glow-2)'}}>↻</span>}</span>
                         </div>
                         <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--green)', fontWeight: 600 }}>
                           {fmt(Math.round(catDaily))}/day
@@ -943,7 +943,7 @@ export default function BudgetsPage() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                           <div style={{ width: 7, height: 7, borderRadius: 2, background: b.category_color }} />
-                          <span style={{ fontSize: 13 }}>{translateCategory(b.category_name)}</span>
+                          <span style={{ fontSize: 13 }}>{translateCategory(b.category_name)}{b.repeat_monthly && <span title='Repeats monthly' style={{fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:4,background:'var(--accent-glow)',color:'var(--accent)',marginLeft:4,border:'1px solid var(--accent-glow-2)'}}>↻</span>}</span>
                         </div>
                         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--red)' }}>+{fmt(overAmt)}</span>
                       </div>
@@ -976,7 +976,7 @@ export default function BudgetsPage() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                           <div style={{ width: 7, height: 7, borderRadius: 2, background: b.category_color }} />
-                          <span style={{ fontSize: 12 }}>{translateCategory(b.category_name)}</span>
+                          <span style={{ fontSize: 12 }}>{translateCategory(b.category_name)}{b.repeat_monthly && <span title='Repeats monthly' style={{fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:4,background:'var(--accent-glow)',color:'var(--accent)',marginLeft:4,border:'1px solid var(--accent-glow-2)'}}>↻</span>}</span>
                         </div>
                         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--amber)' }}>{pct.toFixed(0)}%</span>
                       </div>
@@ -1003,7 +1003,7 @@ export default function BudgetsPage() {
                   const pct = (Number(b.spent) / Number(b.amount)) * 100;
                   return (
                     <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid rgba(34,212,122,0.1)' }}>
-                      <span style={{ fontSize: 12 }}>{translateCategory(b.category_name)}</span>
+                      <span style={{ fontSize: 12 }}>{translateCategory(b.category_name)}{b.repeat_monthly && <span title='Repeats monthly' style={{fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:4,background:'var(--accent-glow)',color:'var(--accent)',marginLeft:4,border:'1px solid var(--accent-glow-2)'}}>↻</span>}</span>
                       <span style={{ fontSize: 11, color: 'var(--green)' }}>{pct.toFixed(0)}% used · {fmt(Number(b.amount) - Number(b.spent))} free</span>
                     </div>
                   );
@@ -1163,7 +1163,7 @@ export default function BudgetsPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ width: 10, height: 10, borderRadius: 2, background: b.category_color, flexShrink: 0 }} />
-                        <span style={{ fontSize: 13, fontWeight: 500 }}>{translateCategory(b.category_name)}</span>
+                        <span style={{ fontSize: 13, fontWeight: 500 }}>{translateCategory(b.category_name)}{b.repeat_monthly && <span title='Repeats monthly' style={{fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:4,background:'var(--accent-glow)',color:'var(--accent)',marginLeft:4,border:'1px solid var(--accent-glow-2)'}}>↻</span>}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         {trend !== null && (
@@ -1321,6 +1321,19 @@ export default function BudgetsPage() {
               <label style={LABEL_STYLE}>Monthly Limit</label>
               <input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0" autoFocus />
             </div>
+            {/* Repeat monthly toggle */}
+            <div
+              onClick={() => setForm(f => ({ ...f, repeat_monthly: !f.repeat_monthly }))}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, background: 'var(--surface-2)', border: `1px solid ${form.repeat_monthly ? 'var(--accent-glow-2)' : 'var(--border)'}`, cursor: 'pointer' }}
+            >
+              <div style={{ width: 40, height: 22, borderRadius: 11, background: form.repeat_monthly ? 'var(--accent)' : 'var(--surface-3)', border: `1px solid ${form.repeat_monthly ? 'var(--accent)' : 'var(--border-2)'}`, position: 'relative', flexShrink: 0, transition: 'background 0.2s' }}>
+                <div style={{ position: 'absolute', top: 2, left: form.repeat_monthly ? 18 : 2, width: 16, height: 16, borderRadius: 8, background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: form.repeat_monthly ? 'var(--accent)' : 'var(--text)' }}>🔄 Repeat every month</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>Automatically copy this budget on the 1st of each new month</div>
+              </div>
+            </div>
             <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
               <button onClick={() => setShowModal(false)} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)', cursor: 'pointer' }}>Cancel</button>
               <button onClick={handleSave} style={{ flex: 1, padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px var(--accent-glow-2)', cursor: 'pointer' }}>Save Budget</button>
@@ -1330,4 +1343,4 @@ export default function BudgetsPage() {
       )}
     </div>
   );
-                  }
+            }
