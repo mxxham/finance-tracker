@@ -5,6 +5,7 @@ import { translateCategory } from '@/lib/categories';
 import { useSettings } from '@/lib/SettingsContext';
 import { BalanceCard } from '@/components/BalanceCard';
 import { showToast } from '@/components/Toast';
+import { AmountInput } from '@/components/AmountInput';
 
 
 interface Budget {
@@ -1319,7 +1320,7 @@ export default function BudgetsPage() {
             </div>
             <div>
               <label style={LABEL_STYLE}>Monthly Limit</label>
-              <input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0" autoFocus />
+              <AmountInput value={form.amount} onChange={v => setForm(f => ({ ...f, amount: v }))} placeholder="0" autoFocus style={{ fontSize: 22, fontWeight: 700 }} />
             </div>
             {/* Repeat monthly toggle */}
             <div
