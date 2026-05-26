@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { useSettings } from '@/lib/SettingsContext';
+import { BalanceCard } from '@/components/BalanceCard';
 import { showToast } from '@/components/Toast';
 
 // ── Types ───────────────────────────────────────────────────────
@@ -815,37 +816,28 @@ export default function SavingsPage() {
         <SpendingAlertBanner alerts={spendingAlerts} fmt={fmt} onDismiss={() => setAlertsDismissed(true)} />
       )}
 
-      {/* Balance + Stats row */}
-      {!loading && (() => {
+      {/* ── Savings Overview Card ── */}
+      {(() => {
         const active = goals.filter(g => g.status === 'active');
         const completed = goals.filter(g => g.status === 'completed');
         const totalSaved = goals.reduce((s, g) => s + Number(g.current_amount), 0);
         const totalTarget = goals.reduce((s, g) => s + Number(g.target_amount), 0);
         const overallPct = totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
-        const statCards = [
-          { label: 'Total Saved', value: goals.length > 0 ? fmt(totalSaved) : '—', sub: goals.length > 0 ? `across ${goals.length} goal${goals.length !== 1 ? 's' : ''}` : 'no goals yet', color: goals.length > 0 ? 'var(--accent)' : 'var(--text-muted)' },
-          { label: 'Total Target', value: goals.length > 0 ? fmt(totalTarget) : '—', sub: goals.length > 0 ? `${overallPct.toFixed(0)}% achieved` : 'no goals yet', color: 'var(--text-muted)' },
-          { label: 'Active', value: String(active.length), sub: 'on track', color: 'var(--green)' },
-          { label: 'Completed', value: String(completed.length), sub: completed.length > 0 ? '🎉 great job!' : 'keep going!', color: completed.length > 0 ? 'var(--green)' : 'var(--text-muted)' },
-        ];
         return (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
-            {/* Available balance — spans full on the left */}
-            <div style={{ background: 'var(--surface)', border: `1.5px solid ${availableBalance > 0 ? 'rgba(34,212,122,0.3)' : 'rgba(240,82,82,0.3)'}`, borderRadius: 14, padding: '12px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2, position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: availableBalance > 0 ? 'var(--green)' : 'var(--red)' }} />
-              <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Available</div>
-              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', color: availableBalance > 0 ? 'var(--green)' : 'var(--red)', letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmt(availableBalance)}</div>
-              <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>to save</div>
-            </div>
-            {statCards.map((item, i) => (
-              <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 14px', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: item.color, opacity: 0.8 }} />
-                <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{item.label}</div>
-                <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', color: item.color, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.value}</div>
-                <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>{item.sub}</div>
-              </div>
-            ))}
-          </div>
+          <BalanceCard
+            balance={availableBalance}
+            balanceLabel="Available to Save"
+            balanceSub={availableBalance > 0 ? 'Ready to put toward goals' : 'Top up your account first'}
+            loading={loading}
+            fmt={fmt}
+            variant="full"
+            chips={[
+              { label: 'Total Saved', value: totalSaved > 0 ? fmt(totalSaved) : '—', sub: `across ${goals.length} goal${goals.length !== 1 ? 's' : ''}` },
+              { label: 'Total Target', value: totalTarget > 0 ? fmt(totalTarget) : '—', sub: overallPct > 0 ? overallPct.toFixed(0) + '% achieved' : 'no goals yet' },
+              { label: 'Active', value: String(active.length), valueColor: active.length > 0 ? '#4ade80' : 'white', sub: 'goals in progress' },
+              { label: 'Completed', value: String(completed.length), valueColor: completed.length > 0 ? '#4ade80' : 'white', sub: completed.length > 0 ? '🎉 great job!' : 'keep going!' },
+            ]}
+          />
         );
       })()}
 
