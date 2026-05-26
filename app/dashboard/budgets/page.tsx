@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { translateCategory } from '@/lib/categories';
 import { useSettings } from '@/lib/SettingsContext';
+import { BalanceCard } from '@/components/BalanceCard';
 import { showToast } from '@/components/Toast';
 
 
@@ -668,25 +669,21 @@ export default function BudgetsPage() {
         </div>
       )}
 
-      {/* ── Stat Cards ── */}
-      {!loading && !emptyState && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(120px, 1fr))', gap: 8, overflowX: 'auto' }} className="stats-scroll">
-          {[
-            { label: 'Total Budget', value: fmt(totalBudget), sub: `${budgets.length} categories`, color: 'var(--accent)' },
-            { label: 'Total Spent', value: fmt(totalSpent), sub: `${overallPct.toFixed(0)}% of budget`, color: totalSpent > totalBudget ? 'var(--red)' : 'var(--green)' },
-            { label: 'Remaining', value: fmt(Math.abs(totalRemaining)), sub: totalRemaining >= 0 ? 'left to spend' : 'over budget', color: totalRemaining >= 0 ? 'var(--text)' : 'var(--red)' },
-            { label: 'Safe Daily', value: safeDailySpend > 0 ? fmt(Math.round(safeDailySpend)) : '—', sub: daysLeft > 0 ? `per day · ${daysLeft}d to payday` : 'cycle ended', color: safeDailySpend > 0 ? 'var(--green)' : 'var(--text-muted)' },
-            { label: 'Forecast', value: fmt(Math.round(forecastSpend)), sub: forecastOver ? 'over budget' : 'projected spend', color: forecastOver ? 'var(--red)' : 'var(--amber)' },
-          ].map((item, i) => (
-            <div key={i} style={{ ...card, padding: '14px 16px', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: item.color, opacity: 0.8 }} />
-              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6 }}>{item.label}</div>
-              <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.03em', fontFamily: 'var(--font-mono)', color: item.color, marginBottom: 3 }}>{item.value}</div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{item.sub}</div>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* ── Budget Overview Card ── */}
+      <BalanceCard
+        balance={totalSpent}
+        balanceLabel="Total Spent"
+        balanceSub={`${overallPct.toFixed(0)}% of ${fmt(totalBudget)} budget`}
+        loading={loading}
+        fmt={fmt}
+        variant="full"
+        chips={[
+          { label: 'Remaining', value: fmt(Math.abs(totalRemaining)), valueColor: totalRemaining >= 0 ? '#4ade80' : '#f87171', sub: totalRemaining >= 0 ? 'left to spend' : 'over budget' },
+          { label: 'Safe Daily', value: safeDailySpend > 0 ? fmt(Math.round(safeDailySpend)) : '—', valueColor: '#4ade80', sub: daysLeft > 0 ? `${daysLeft}d to payday` : 'cycle ended' },
+          { label: 'Forecast', value: fmt(Math.round(forecastSpend)), valueColor: forecastOver ? '#f87171' : 'white', sub: forecastOver ? 'over budget' : 'projected spend' },
+          { label: 'Budget health', value: budgets.filter(b => Number(b.spent ?? 0) / Number(b.amount) < 0.8).length + '/' + budgets.length, sub: 'categories on track' },
+        ]}
+      />
 
       {/* ── Donut + Trend Chart ── */}
       {!loading && !emptyState && (
@@ -1333,4 +1330,4 @@ export default function BudgetsPage() {
       )}
     </div>
   );
-}
+                  }
