@@ -346,14 +346,14 @@ export default function RecurringPage() {
         ) : filtered.length === 0 ? (
           <EmptyState onAdd={openAdd} />
         ) : (
-          filtered.map((item, idx) => {
+          filtered.map((item, idx) => { const sc = `animate-slideUp stagger-${Math.min((idx%8)+1,8)}`;
             const days = daysUntil(item.next_due);
             const isOverdue = days < 0;
             const isDueSoon = days >= 0 && days <= 3;
             const freqColor = FREQ_COLORS[item.frequency] || '#5b6ef5';
 
             return (
-              <div key={item.id} style={{
+              <div key={item.id} className={sc} style={{
                 padding: '16px 20px',
                 borderBottom: idx < filtered.length - 1 ? '1px solid var(--border)' : 'none',
                 display: 'flex', alignItems: 'center', gap: 14,
@@ -465,7 +465,7 @@ export default function RecurringPage() {
         <div style={{ padding: '16px 18px', borderRadius: 14, background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Due this week</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {dueThisWeek.map(item => (
+            {dueThisWeek.map((item, i) => { const sc3 = `animate-slideRight stagger-${Math.min(i+1,8)}`; return (
               <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: item.type === 'income' ? 'var(--green)' : 'var(--red)', flexShrink: 0 }} />
                 <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{item.description}</span>
