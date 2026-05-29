@@ -285,10 +285,8 @@ button:active:not(:disabled) { transform: scale(0.96) !important; }
 .card:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 30px rgba(0,0,0,0.28);
+  border-color: var(--border-2);
 }
-  transition: border-color 0.2s ease;
-}
-.card:hover { border-color: var(--border-2); }
 
 /* ============ 3D TILT CARD ============ */
 .tilt-card {
@@ -730,4 +728,4 @@ button:active:not(:disabled) { transform: scale(0.96) !important; }
   .an-kpi-grid {
     grid-template-columns: repeat(2, 1fr) !important;
   }
-  }
+}
