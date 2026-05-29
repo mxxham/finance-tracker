@@ -466,7 +466,7 @@ export default function RecurringPage() {
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Due this week</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {dueThisWeek.map((item, i) => { const sc3 = `animate-slideRight stagger-${Math.min(i+1,8)}`; return (
-              <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div key={item.id} className={sc3} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: item.type === 'income' ? 'var(--green)' : 'var(--red)', flexShrink: 0 }} />
                 <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{item.description}</span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
@@ -476,7 +476,7 @@ export default function RecurringPage() {
                   {item.type === 'income' ? '+' : '−'}{fmt(Number(item.amount))}
                 </span>
               </div>
-            ))}
+            ); })}
           </div>
         </div>
       )}
