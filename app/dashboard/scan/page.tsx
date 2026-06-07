@@ -112,12 +112,9 @@ export default function ScanPage() {
       setOcrText(raw);
       setStatus('parsing'); setProgress(90); setProgressLabel('Identifying transactions…');
       await new Promise(r => setTimeout(r, 300));
-      const d = new Date();
-      const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       const parsed = parseOCRText(raw);
-      const olderTxs = parsed.transactions.filter(tx => tx.date !== today);
       setSourceApp(parsed.source_app);
-      setNotes(parsed.notes + (olderTxs.length ? ` ${olderTxs.length} older transaction(s) from before today were skipped.` : ''));
+      setNotes(parsed.notes);
       setProgressLabel('Checking for duplicates…');
       const existingTxs = await api.getTransactions({ limit: '10000' });
       const vendorCategoryMap = new Map<string, number>();
@@ -127,8 +124,9 @@ export default function ScanPage() {
         if (!vendorCategoryMap.has(key)) vendorCategoryMap.set(key, e.category_id);
       }
       const dups: ParsedTransaction[] = [];
-      const todayTxs = parsed.transactions.filter(tx => tx.date === today);
-      const unique = todayTxs.filter(tx => {
+      // Keep ALL transactions (not just today) — bank statements show multiple days
+      const allTxs = parsed.transactions.sort((a, b) => b.date.localeCompare(a.date));
+      const unique = allTxs.filter(tx => {
         const isDup = existingTxs.some((e: { description: string; amount: number; type: string; date: string | null }) => {
           const m1 = normalizeMerchantKey(tx.description);
           const m2 = normalizeMerchantKey(e.description);
@@ -597,4 +595,4 @@ export default function ScanPage() {
       )}
     </div>
   );
-}
+                      }
