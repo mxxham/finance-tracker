@@ -21,15 +21,15 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
 };
 
 const nav = [
-  { href: '/dashboard',              label: t('nav.overview'),     iconKey: 'overview',     desc: 'Summary & charts' },
-  { href: '/dashboard/analytics',    label: t('nav.analytics'),    iconKey: 'analytics',    desc: 'Deep insights' },
-  { href: '/dashboard/transactions', label: t('nav.transactions'), iconKey: 'transactions', desc: 'All entries' },
-  { href: '/dashboard/budgets',      label: t('nav.budgets'),      iconKey: 'budgets',      desc: 'Spending limits' },
-  { href: '/dashboard/savings',      label: t('nav.savings'),      iconKey: 'savings',      desc: 'Goals & progress' },
-  { href: '/dashboard/recurring',    label: t('nav.recurring'),    iconKey: 'recurring',    desc: 'Auto transactions' },
-  { href: '/dashboard/categories',   label: t('nav.categories'),   iconKey: 'categories',   desc: 'Organize' },
-  { href: '/dashboard/scan',         label: t('nav.scan'),         iconKey: 'scan',         desc: 'Import screenshot', highlight: true },
-  { href: '/dashboard/settings',     label: t('nav.settings'),     iconKey: 'settings',     desc: 'Preferences' },
+  { href: '/dashboard',              label: 'Overview',      iconKey: 'overview',     desc: 'Summary & charts' },
+  { href: '/dashboard/analytics',    label: 'Analytics',     iconKey: 'analytics',    desc: 'Deep insights' },
+  { href: '/dashboard/transactions', label: 'Transactions',  iconKey: 'transactions', desc: 'All entries' },
+  { href: '/dashboard/budgets',      label: 'Budgets',       iconKey: 'budgets',      desc: 'Spending limits' },
+  { href: '/dashboard/savings',      label: 'Savings',       iconKey: 'savings',      desc: 'Goals & progress' },
+  { href: '/dashboard/recurring',    label: 'Recurring',     iconKey: 'recurring',    desc: 'Auto transactions' },
+  { href: '/dashboard/categories',   label: 'Categories',    iconKey: 'categories',   desc: 'Organize' },
+  { href: '/dashboard/scan',         label: 'Scan',          iconKey: 'scan',         desc: 'Import screenshot', highlight: true },
+  { href: '/dashboard/settings',     label: 'Settings',      iconKey: 'settings',     desc: 'Preferences' },
 ];
 
 // Bottom nav: 4 primary + "more"

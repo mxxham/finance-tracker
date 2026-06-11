@@ -95,7 +95,7 @@ function useTiltCard() {
 const STAT_CONFIG = [
   {
     key: 'income',
-    label: t('label.income'),
+    label: 'Income',
     color: '#22d47a',
     bg: 'rgba(34,212,122,0.08)',
     border: 'rgba(34,212,122,0.15)',
@@ -103,7 +103,7 @@ const STAT_CONFIG = [
   },
   {
     key: 'expenses',
-    label: t('label.expense'),
+    label: 'Expenses',
     color: '#f05252',
     bg: 'rgba(240,82,82,0.08)',
     border: 'rgba(240,82,82,0.15)',
@@ -111,7 +111,7 @@ const STAT_CONFIG = [
   },
   {
     key: 'savings',
-    label: t('label.saved'),
+    label: 'Saved',
     color: 'var(--accent)',
     bg: 'var(--accent-glow)',
     border: 'var(--accent-glow-2)',
@@ -119,7 +119,7 @@ const STAT_CONFIG = [
   },
   {
     key: 'monthlyNet',
-    label: t('overview.monthly.net'),
+    label: 'Monthly Net',
     color: '#f5a623',
     bg: 'rgba(245,166,35,0.08)',
     border: 'rgba(245,166,35,0.15)',
@@ -520,7 +520,7 @@ const MODAL_OVERLAY: React.CSSProperties = {
 };
 
 export default function DashboardPage() {
-  const { fmt, fmtShort } = useSettings();
+  const { fmt, fmtShort, t } = useSettings();
   const now = new Date();
 
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -810,9 +810,9 @@ export default function DashboardPage() {
         fmt={fmt}
         variant="full"
         chips={[
-          { label: t('label.income'), value: stats ? '+' + fmt(stats.income) : '—', valueColor: '#4ade80', sub: t('label.this.month') },
-          { label: t('label.expense'), value: stats ? '−' + fmt(stats.expenses) : '—', valueColor: '#f87171', sub: t('label.this.month') },
-          { label: t('label.saved'), value: stats ? fmt(stats.savings) : '—', sub: t('label.this.month') },
+          { label: t('label.income'), value: stats ? '+' + fmt(stats.income) : '—', valueColor: '#4ade80', sub: 'this month' },
+          { label: t('label.expense'), value: stats ? '−' + fmt(stats.expenses) : '—', valueColor: '#f87171', sub: 'this month' },
+          { label: t('label.saved'), value: stats ? fmt(stats.savings) : '—', sub: 'this month' },
           { label: t('overview.monthly.net'), value: stats ? fmt(stats.income - stats.expenses) : '—', valueColor: stats && (stats.income - stats.expenses) >= 0 ? '#4ade80' : '#f87171', sub: 'income − expenses' },
         ]}
       />
