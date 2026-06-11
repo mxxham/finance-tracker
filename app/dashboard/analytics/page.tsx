@@ -329,10 +329,10 @@ export default function AnalyticsPage() {
   const savingsRate = stats && stats.income > 0 ? Math.round((stats.savings / stats.income) * 100) : 0;
 
   const STAT_CARDS = stats ? [
-    { label: 'Monthly Spending',    value: fmt(stats.expenses),    sub: 'Total expenses tracked',     color: 'var(--red)'    },
-    { label: 'Daily Burn Rate',     value: `${fmt(burnRate)}/d`,   sub: 'Average daily spend',        color: 'var(--amber)'  },
-    { label: 'Projected Month-end', value: fmt(projectedExpense),  sub: 'Estimated total spend',      color: 'var(--purple)' },
-    { label: 'Savings Rate',        value: `${savingsRate}%`,      sub: 'Of total income saved',      color: savingsRate >= 20 ? 'var(--green)' : 'var(--amber)' },
+    { label: t('analytics.monthly.spend'),    value: fmt(stats.expenses),    sub: 'Total expenses tracked',     color: 'var(--red)'    },
+    { label: t('analytics.daily.burn'),     value: `${fmt(burnRate)}/d`,   sub: 'Average daily spend',        color: 'var(--amber)'  },
+    { label: t('analytics.projected'), value: fmt(projectedExpense),  sub: 'Estimated total spend',      color: 'var(--purple)' },
+    { label: t('analytics.savings.rate'),        value: `${savingsRate}%`,      sub: 'Of total income saved',      color: savingsRate >= 20 ? 'var(--green)' : 'var(--amber)' },
   ] : null;
 
   // Drill-down modal: resolves which transactions to show based on modal type
@@ -438,7 +438,7 @@ return createPortal(
           { label: 'Monthly Spend', value: stats ? fmt(stats.expenses) : '—', valueColor: '#f87171', sub: 'total expenses' },
           { label: 'Daily Burn', value: stats ? fmt(burnRate) + '/d' : '—', valueColor: '#fbbf24', sub: 'avg daily spend' },
           { label: 'Projected', value: stats ? fmt(Math.round(projectedExpense)) : '—', valueColor: stats && projectedExpense > stats.expenses * 1.1 ? '#f87171' : 'white', sub: stats && projectedExpense > stats.expenses * 1.1 ? 'over budget' : 'month-end estimate' },
-          { label: 'Savings Rate', value: stats ? savingsRate + '%' : '—', valueColor: savingsRate >= 20 ? '#4ade80' : '#fbbf24', sub: 'of income saved' },
+          { label: t('analytics.savings.rate'), value: stats ? savingsRate + '%' : '—', valueColor: savingsRate >= 20 ? '#4ade80' : '#fbbf24', sub: 'of income saved' },
         ]}
       />
 
@@ -1184,7 +1184,7 @@ overflow: 'hidden', animation: 'slideUpSheet 0.22s cubic-bezier(0.34,1.2,0.64,1)
               { label: 'Total Income',    value: stats ? fmt(stats.income) : '—',   color: 'var(--green)' },
               { label: 'Total Expenses',  value: stats ? fmt(stats.expenses) : '—', color: 'var(--red)'   },
               { label: 'Net Balance',     value: stats ? fmt(stats.balance) : '—',  color: 'var(--text)'  },
-              { label: 'Savings Rate',    value: `${savingsRate}%`,                 color: savingsRate >= 20 ? 'var(--green)' : savingsRate >= 10 ? 'var(--amber)' : 'var(--red)' },
+              { label: t('analytics.savings.rate'),    value: `${savingsRate}%`,                 color: savingsRate >= 20 ? 'var(--green)' : savingsRate >= 10 ? 'var(--amber)' : 'var(--red)' },
             ].map(({ label, value, color }, i) => (
               <div key={label} className={`animate-fadeUp stagger-${i+1}`} style={{ padding: '16px 18px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', transition: 'transform 0.15s, border-color 0.15s' }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-2)'; }}
