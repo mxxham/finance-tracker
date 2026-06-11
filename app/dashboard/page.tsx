@@ -95,7 +95,7 @@ function useTiltCard() {
 const STAT_CONFIG = [
   {
     key: 'income',
-    label: 'Income',
+    label: t('label.income'),
     color: '#22d47a',
     bg: 'rgba(34,212,122,0.08)',
     border: 'rgba(34,212,122,0.15)',
@@ -103,7 +103,7 @@ const STAT_CONFIG = [
   },
   {
     key: 'expenses',
-    label: 'Expenses',
+    label: t('label.expense'),
     color: '#f05252',
     bg: 'rgba(240,82,82,0.08)',
     border: 'rgba(240,82,82,0.15)',
@@ -111,7 +111,7 @@ const STAT_CONFIG = [
   },
   {
     key: 'savings',
-    label: 'Saved',
+    label: t('label.saved'),
     color: 'var(--accent)',
     bg: 'var(--accent-glow)',
     border: 'var(--accent-glow-2)',
@@ -119,7 +119,7 @@ const STAT_CONFIG = [
   },
   {
     key: 'monthlyNet',
-    label: 'Monthly Net',
+    label: t('overview.monthly.net'),
     color: '#f5a623',
     bg: 'rgba(245,166,35,0.08)',
     border: 'rgba(245,166,35,0.15)',
@@ -810,10 +810,10 @@ export default function DashboardPage() {
         fmt={fmt}
         variant="full"
         chips={[
-          { label: 'Income', value: stats ? '+' + fmt(stats.income) : '—', valueColor: '#4ade80', sub: 'this month' },
-          { label: 'Expenses', value: stats ? '−' + fmt(stats.expenses) : '—', valueColor: '#f87171', sub: 'this month' },
-          { label: 'Saved', value: stats ? fmt(stats.savings) : '—', sub: 'this month' },
-          { label: 'Monthly Net', value: stats ? fmt(stats.income - stats.expenses) : '—', valueColor: stats && (stats.income - stats.expenses) >= 0 ? '#4ade80' : '#f87171', sub: 'income − expenses' },
+          { label: t('label.income'), value: stats ? '+' + fmt(stats.income) : '—', valueColor: '#4ade80', sub: t('label.this.month') },
+          { label: t('label.expense'), value: stats ? '−' + fmt(stats.expenses) : '—', valueColor: '#f87171', sub: t('label.this.month') },
+          { label: t('label.saved'), value: stats ? fmt(stats.savings) : '—', sub: t('label.this.month') },
+          { label: t('overview.monthly.net'), value: stats ? fmt(stats.income - stats.expenses) : '—', valueColor: stats && (stats.income - stats.expenses) >= 0 ? '#4ade80' : '#f87171', sub: 'income − expenses' },
         ]}
       />
 
