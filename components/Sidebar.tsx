@@ -1,4 +1,5 @@
 'use client';
+import { useSettings } from '@/lib/SettingsContext';
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -20,15 +21,15 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
 };
 
 const nav = [
-  { href: '/dashboard',              label: 'Overview',     iconKey: 'overview',     desc: 'Summary & charts' },
-  { href: '/dashboard/analytics',    label: 'Analytics',    iconKey: 'analytics',    desc: 'Deep insights' },
-  { href: '/dashboard/transactions', label: 'Transactions', iconKey: 'transactions', desc: 'All entries' },
-  { href: '/dashboard/budgets',      label: 'Budgets',      iconKey: 'budgets',      desc: 'Spending limits' },
-  { href: '/dashboard/savings',      label: 'Savings',      iconKey: 'savings',      desc: 'Goals & progress' },
-  { href: '/dashboard/recurring',    label: 'Recurring',    iconKey: 'recurring',    desc: 'Auto transactions' },
-  { href: '/dashboard/categories',   label: 'Categories',   iconKey: 'categories',   desc: 'Organize' },
-  { href: '/dashboard/scan',         label: 'Scan',         iconKey: 'scan',         desc: 'Import screenshot', highlight: true },
-  { href: '/dashboard/settings',     label: 'Settings',     iconKey: 'settings',     desc: 'Preferences' },
+  { href: '/dashboard',              label: t('nav.overview'),     iconKey: 'overview',     desc: 'Summary & charts' },
+  { href: '/dashboard/analytics',    label: t('nav.analytics'),    iconKey: 'analytics',    desc: 'Deep insights' },
+  { href: '/dashboard/transactions', label: t('nav.transactions'), iconKey: 'transactions', desc: 'All entries' },
+  { href: '/dashboard/budgets',      label: t('nav.budgets'),      iconKey: 'budgets',      desc: 'Spending limits' },
+  { href: '/dashboard/savings',      label: t('nav.savings'),      iconKey: 'savings',      desc: 'Goals & progress' },
+  { href: '/dashboard/recurring',    label: t('nav.recurring'),    iconKey: 'recurring',    desc: 'Auto transactions' },
+  { href: '/dashboard/categories',   label: t('nav.categories'),   iconKey: 'categories',   desc: 'Organize' },
+  { href: '/dashboard/scan',         label: t('nav.scan'),         iconKey: 'scan',         desc: 'Import screenshot', highlight: true },
+  { href: '/dashboard/settings',     label: t('nav.settings'),     iconKey: 'settings',     desc: 'Preferences' },
 ];
 
 // Bottom nav: 4 primary + "more"
@@ -42,6 +43,7 @@ export default function Sidebar() {
   const [activeY, setActiveY] = useState(0);
   const [activeH, setActiveH] = useState(40);
   const [ready, setReady] = useState(false);
+  const { t } = useSettings();
   const [isMobile, setIsMobile] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const navRefs = useRef<(HTMLAnchorElement | null)[]>([]);
@@ -183,7 +185,7 @@ export default function Sidebar() {
         }}>
           {/* Sliding pill indicator */}
           {(() => {
-            const allItems = [...primaryItems, { href: '__more__', iconKey: 'more', label: 'More' }];
+            const allItems = [...primaryItems, { href: '__more__', iconKey: 'more', label: t('nav.more') }];
             const activeIdx = moreOpen ? allItems.length - 1 : primaryItems.findIndex(i => i.href === pathname);
             const pillLeft = activeIdx >= 0 ? `calc(${activeIdx} * (100% / ${allItems.length}) + (100% / ${allItems.length} / 2) - 28px)` : '-100px';
             return (
@@ -242,7 +244,7 @@ export default function Sidebar() {
               transform: moreOpen ? 'scale(1.18) translateY(-1px) rotate(90deg)' : 'scale(1)',
               transition: 'transform 0.3s cubic-bezier(0.34,1.4,0.64,1)',
             }}>{NAV_ICONS.more}</span>
-            <span style={{ fontSize: 10, fontWeight: moreOpen ? 700 : 400, transition: 'font-weight 0.1s' }}>More</span>
+            <span style={{ fontSize: 10, fontWeight: moreOpen ? 700 : 400, transition: 'font-weight 0.1s' }}>{t('nav.more')}</span>
           </button>
         </nav>
       </>
