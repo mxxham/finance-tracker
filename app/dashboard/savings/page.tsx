@@ -285,7 +285,7 @@ function ContributeModal({ goal, mode, availableBalance, onClose, onDone, fmt }:
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 44, height: 44, borderRadius: 12, background: goal.color + '20', border: `1.5px solid ${goal.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{goal.icon}</div>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>{isAdd ? 'Add Money' : 'Withdraw Money'}</div>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>{isAdd ? t('action.contribute') : 'Withdraw Money'}</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{goal.name} · {fmt(Number(goal.current_amount))} saved</div>
           </div>
         </div>
@@ -631,8 +631,8 @@ function SummaryStats({ goals, fmt }: { goals: SavingsGoal[]; fmt: (n: number) =
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
       {[
-        { label: 'Total Saved', value: fmt(totalSaved), sub: `across ${goals.length} goal${goals.length !== 1 ? 's' : ''}`, color: 'var(--accent)' },
-        { label: 'Total Target', value: fmt(totalTarget), sub: `${overallPct.toFixed(0)}% achieved overall`, color: 'var(--text-muted)' },
+        { label: t('savings.total.saved'), value: fmt(totalSaved), sub: `across ${goals.length} goal${goals.length !== 1 ? 's' : ''}`, color: 'var(--accent)' },
+        { label: t('savings.total.target'), value: fmt(totalTarget), sub: `${overallPct.toFixed(0)}% achieved overall`, color: 'var(--text-muted)' },
         { label: 'Active Goals', value: String(active.length), sub: active.filter(g => g.deadline && daysUntil(g.deadline) < 30 && daysUntil(g.deadline) >= 0).length > 0 ? `${active.filter(g => g.deadline && daysUntil(g.deadline) < 30 && daysUntil(g.deadline) >= 0).length} due soon` : 'on track', color: 'var(--green)' },
         { label: 'Completed', value: String(completed.length), sub: completed.length > 0 ? 'goals reached 🎉' : 'keep going!', color: completed.length > 0 ? 'var(--green)' : 'var(--text-muted)' },
       ].map((item, i) => (
@@ -692,7 +692,7 @@ function SpendingAlertBanner({ alerts, fmt, onDismiss }: { alerts: SpendingAlert
 
 // ── Main Page ─────────────────────────────────────────────────────
 export default function SavingsPage() {
-  const { fmt } = useSettings();
+  const { fmt, t } = useSettings();
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -833,8 +833,8 @@ export default function SavingsPage() {
             fmt={fmt}
             variant="full"
             chips={[
-              { label: 'Total Saved', value: totalSaved > 0 ? fmt(totalSaved) : '—', sub: `across ${goals.length} goal${goals.length !== 1 ? 's' : ''}` },
-              { label: 'Total Target', value: totalTarget > 0 ? fmt(totalTarget) : '—', sub: overallPct > 0 ? overallPct.toFixed(0) + '% achieved' : 'no goals yet' },
+              { label: t('savings.total.saved'), value: totalSaved > 0 ? fmt(totalSaved) : '—', sub: `across ${goals.length} goal${goals.length !== 1 ? 's' : ''}` },
+              { label: t('savings.total.target'), value: totalTarget > 0 ? fmt(totalTarget) : '—', sub: overallPct > 0 ? overallPct.toFixed(0) + '% achieved' : 'no goals yet' },
               { label: 'Active', value: String(active.length), valueColor: active.length > 0 ? '#4ade80' : 'white', sub: 'goals in progress' },
               { label: 'Completed', value: String(completed.length), valueColor: completed.length > 0 ? '#4ade80' : 'white', sub: completed.length > 0 ? '🎉 great job!' : 'keep going!' },
             ]}
