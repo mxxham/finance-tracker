@@ -1,6 +1,7 @@
 export interface UserSettings {
   currency: string;
   locale: string;
+  language: string;
   payday: number;
   theme: string;
   date_format: string;
@@ -16,6 +17,7 @@ export interface UserSettings {
 export const DEFAULT_SETTINGS: UserSettings = {
   currency: 'IDR',
   locale: 'id-ID',
+  language: 'en',
   payday: 25,
   theme: 'midnight',
   date_format: 'DD/MM/YYYY',
