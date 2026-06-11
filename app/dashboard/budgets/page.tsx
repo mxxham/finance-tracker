@@ -378,7 +378,7 @@ export default function BudgetsPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this budget?')) return;
+    if (!confirm(t('budget.delete.confirm'))) return;
     try { await api.deleteBudget(id); showToast('Budget deleted', 'info'); load(); }
     catch { showToast('Failed to delete', 'error'); }
   };
