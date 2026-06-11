@@ -43,7 +43,7 @@ export default function CategoriesPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm(t('categories.delete.confirm'))) return;
+    if (!confirm('Delete this category? Transactions using it will be uncategorized.')) return;
     try { await api.deleteCategory(id); showToast('Deleted', 'info'); load(); }
     catch { showToast('Failed to delete', 'error'); }
   };

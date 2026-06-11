@@ -195,7 +195,7 @@ export default function RecurringPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm(t('recurring.delete.confirm'))) return;
+    if (!confirm('Delete this recurring transaction?')) return;
     try { await api.deleteRecurring(id); showToast('Deleted', 'info'); load(); }
     catch { showToast('Failed to delete', 'error'); }
   };

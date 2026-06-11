@@ -177,7 +177,7 @@ const MODAL_BOX: React.CSSProperties = {
 };
 
 export default function TransactionsPage() {
-  const { fmt, settings } = useSettings();
+  const { fmt, settings, t } = useSettings();
   const isMobile = useIsMobile();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -255,7 +255,7 @@ export default function TransactionsPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm(t('txn.delete.confirm'))) return;
+    if (!confirm('Delete this transaction?')) return;
     try { await api.deleteTransaction(id); showToast('Deleted', 'info'); load(); }
     catch { showToast('Failed to delete', 'error'); }
   };

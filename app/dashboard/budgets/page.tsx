@@ -273,7 +273,7 @@ function MonthlyBarChart({ trendData }: { trendData: TrendRow[] }) {
 // ── Main Page ───────────────────────────────────────────────────
 
 export default function BudgetsPage() {
-  const { fmt, settings } = useSettings();
+  const { fmt, settings, t } = useSettings();
   const payday = settings.payday || 25;
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -378,7 +378,7 @@ export default function BudgetsPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm(t('budget.delete.confirm'))) return;
+    if (!confirm('Delete this budget?')) return;
     try { await api.deleteBudget(id); showToast('Budget deleted', 'info'); load(); }
     catch { showToast('Failed to delete', 'error'); }
   };

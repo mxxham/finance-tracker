@@ -260,4 +260,3 @@ export function translateCategoryName(name: string, lang: Language): string {
   if (lang === 'id') return CATEGORY_ID[name] ?? name;
   return name;
 }
-
