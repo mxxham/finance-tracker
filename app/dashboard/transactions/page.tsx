@@ -255,7 +255,7 @@ export default function TransactionsPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this transaction?')) return;
+    if (!confirm(t('txn.delete.confirm'))) return;
     try { await api.deleteTransaction(id); showToast('Deleted', 'info'); load(); }
     catch { showToast('Failed to delete', 'error'); }
   };
@@ -373,8 +373,8 @@ export default function TransactionsPage() {
         {!loading && paginated.length === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '60px 24px' }}>
             <div style={{ fontSize: 40, opacity: 0.12 }}>⇅</div>
-            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-soft)' }}>{search ? 'No matches found' : 'No transactions this month'}</p>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{search ? 'Try a different search term' : 'Tap Add to get started'}</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-soft)' }}>{search ? t('txn.no.matches') : t('txn.no.txns')}</p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{search ? t('txn.search.tip') : t('txn.tap.add')}</p>
             {!search && (
               <button onClick={openAdd} style={{ marginTop: 6, padding: '9px 20px', borderRadius: 9, fontSize: 13, fontWeight: 600, background: 'var(--accent)', color: 'white', border: 'none' }}>+ Add Transaction</button>
             )}
@@ -485,7 +485,7 @@ export default function TransactionsPage() {
           <div style={MODAL_BOX}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border-2)', margin: '0 auto 4px' }} />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h2 style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.03em' }}>{editTx ? 'Edit Transaction' : 'New Transaction'}</h2>
+              <h2 style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.03em' }}>{editTx ? t('txn.edit.title') : t('txn.add.title')}</h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 20, lineHeight: 1, padding: 4 }}>×</button>
             </div>
             <div style={{ display: 'flex', background: 'var(--surface-2)', borderRadius: 10, padding: 4, border: '1px solid var(--border)' }}>
