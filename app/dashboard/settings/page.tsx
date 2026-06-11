@@ -129,6 +129,7 @@ export default function SettingsPage() {
 
   // Appearance
   const [theme, setTheme] = useState('midnight');
+  const [language, setLanguage] = useState<'en'|'id'>('en');
   const [enableAnimations, setEnableAnimations] = useState(true);
   const [dateFormat, setDateFormat] = useState('DD/MM/YYYY');
   const [weekStart, setWeekStart] = useState('monday');
@@ -244,6 +245,7 @@ export default function SettingsPage() {
       setCompactNumbers(settings.compact_numbers);
       setPayday(settings.payday);
       setTheme(settings.theme || 'midnight');
+      setLanguage((settings.language as 'en'|'id') || 'en');
       setEnableAnimations(settings.enable_animations);
       setDateFormat(settings.date_format);
       setWeekStart(settings.week_start);
@@ -312,7 +314,7 @@ export default function SettingsPage() {
   const saveAppearance = async () => {
     setSaving(true);
     try {
-      await updateSettings({ theme, enable_animations: enableAnimations, date_format: dateFormat, week_start: weekStart, default_view: defaultView });
+      await updateSettings({ theme, language, enable_animations: enableAnimations, date_format: dateFormat, week_start: weekStart, default_view: defaultView });
       showToast('Appearance saved');
     } catch { showToast('Failed to save', 'error'); }
     finally { setSaving(false); }
@@ -620,6 +622,38 @@ export default function SettingsPage() {
             <Card>
               <SectionTitle icon={SECTION_ICONS.appearance} title="Appearance" subtitle="Customize how the app looks and behaves" />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+                {/* Language Selector */}
+                <div>
+                  <Label>App Language</Label>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                    {([
+                      { code: 'en' as const, label: 'English', flag: '🇬🇧', sub: 'English' },
+                      { code: 'id' as const, label: 'Bahasa Indonesia', flag: '🇮🇩', sub: 'Indonesian' },
+                    ]).map(lang => (
+                      <button key={lang.code} onClick={() => setLanguage(lang.code)} style={{
+                        flex: 1, padding: '14px 16px', borderRadius: 12, cursor: 'pointer',
+                        border: `2px solid ${language === lang.code ? 'var(--accent)' : 'var(--border)'}`,
+                        background: language === lang.code ? 'var(--accent-glow)' : 'var(--surface-2)',
+                        display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
+                        boxShadow: language === lang.code ? '0 2px 12px var(--accent-glow-2)' : 'none',
+                        transition: 'all 0.15s ease',
+                      }}>
+                        <span style={{ fontSize: 28 }}>{lang.flag}</span>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: language === lang.code ? 'var(--accent)' : 'var(--text)' }}>{lang.label}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{lang.sub}</div>
+                        </div>
+                        {language === lang.code && (
+                          <div style={{ marginLeft: 'auto', width: 18, height: 18, borderRadius: 9, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>Changes the language of all app text. Takes effect after saving.</p>
+                </div>
 
                 {/* Theme Picker */}
                 <div>
