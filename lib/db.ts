@@ -70,6 +70,7 @@ export async function initDB() {
       user_id INTEGER REFERENCES users(id) ON DELETE CASCADE UNIQUE,
       currency VARCHAR(10) DEFAULT 'IDR',
       locale VARCHAR(20) DEFAULT 'id-ID',
+      language VARCHAR(10) DEFAULT 'en',
       payday INTEGER DEFAULT 25,
       theme VARCHAR(20) DEFAULT 'dark',
       date_format VARCHAR(20) DEFAULT 'DD/MM/YYYY',
@@ -83,6 +84,9 @@ export async function initDB() {
       updated_at TIMESTAMP DEFAULT NOW()
     );
   `);
+
+  // Migrate: add language column if missing (for existing deployments)
+  await query(`ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'en'`).catch(() => {});
 
   await query(`
     CREATE TABLE IF NOT EXISTS recurring (
