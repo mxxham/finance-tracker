@@ -106,7 +106,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 }
 
 export default function RecurringPage() {
-  const { fmt } = useSettings();
+  const { fmt, t } = useSettings();
   const [items, setItems] = useState<Recurring[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -195,7 +195,7 @@ export default function RecurringPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this recurring transaction?')) return;
+    if (!confirm(t('recurring.delete.confirm'))) return;
     try { await api.deleteRecurring(id); showToast('Deleted', 'info'); load(); }
     catch { showToast('Failed to delete', 'error'); }
   };
@@ -275,8 +275,8 @@ export default function RecurringPage() {
         chips={[
           { label: 'This month in', value: monthlyStats ? '+' + fmt(monthlyStats.income) : '—', valueColor: '#4ade80', sub: 'actual income' },
           { label: 'This month out', value: monthlyStats ? '−' + fmt(monthlyStats.expenses) : '—', valueColor: '#f87171', sub: 'actual expenses' },
-          { label: 'After recurring', value: fmt((balance ?? 0) - monthlyExpense), sub: 'if all expenses post' },
-          { label: 'Active rules', value: String(active.length), sub: 'recurring transactions' },
+          { label: t('recurring.after.exp'), value: fmt((balance ?? 0) - monthlyExpense), sub: 'if all expenses post' },
+          { label: t('recurring.active.rules'), value: String(active.length), sub: 'recurring transactions' },
         ]}
       />
 
@@ -286,7 +286,7 @@ export default function RecurringPage() {
           { label: 'Monthly income', value: fmt(monthlyIncome), color: 'var(--green)', icon: '↑', sub: 'estimated' },
           { label: 'Monthly expenses', value: fmt(monthlyExpense), color: 'var(--red)', icon: '↓', sub: 'estimated' },
           { label: 'Net monthly', value: fmt(monthlyIncome - monthlyExpense), color: monthlyIncome >= monthlyExpense ? 'var(--green)' : 'var(--red)', icon: '≈', sub: 'income − expenses' },
-          { label: 'Due this week', value: String(dueThisWeek.length), color: 'var(--amber)', icon: '⏰', sub: dueThisWeek.length === 1 ? '1 transaction' : `${dueThisWeek.length} transactions` },
+          { label: t('recurring.due.this.week'), value: String(dueThisWeek.length), color: 'var(--amber)', icon: '⏰', sub: dueThisWeek.length === 1 ? '1 transaction' : `${dueThisWeek.length} transactions` },
         ].map(card => (
           <div key={card.label} style={{ padding: '16px 18px', borderRadius: 14, background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -425,7 +425,7 @@ export default function RecurringPage() {
                       disabled={actionLoading === item.id}
                       title="Post this transaction to your ledger now"
                       style={{ fontSize: 11, padding: '5px 10px', borderRadius: 7, background: (isOverdue || isDueSoon) ? 'var(--accent-glow)' : 'var(--surface-2)', color: (isOverdue || isDueSoon) ? 'var(--accent)' : 'var(--text-muted)', border: `1px solid ${(isOverdue || isDueSoon) ? 'var(--accent-glow-2)' : 'var(--border-2)'}`, fontWeight: 600, opacity: actionLoading === item.id ? 0.5 : 1 }}>
-                      {actionLoading === item.id ? '…' : 'Post'}
+                      {actionLoading === item.id ? '…' : t('action.post')}
                     </button>
                   )}
                   {item.is_active && (
@@ -439,9 +439,9 @@ export default function RecurringPage() {
                   )}
                   <button
                     onClick={() => handleToggle(item)}
-                    title={item.is_active ? 'Pause this recurring transaction' : 'Resume'}
+                    title={item.is_active ? 'Pause this recurring transaction' : t('action.resume')}
                     style={{ fontSize: 11, padding: '5px 10px', borderRadius: 7, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border-2)', fontWeight: 600 }}>
-                    {item.is_active ? 'Pause' : 'Resume'}
+                    {item.is_active ? t('action.pause') : t('action.resume')}
                   </button>
                   <button
                     onClick={() => openEdit(item)}
@@ -488,7 +488,7 @@ export default function RecurringPage() {
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border-2)', margin: '0 auto 2px' }} />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h2 style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>
-                {editItem ? 'Edit Recurring' : 'New Recurring Transaction'}
+                {editItem ? t('recurring.edit') : t('recurring.new')}
               </h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 22, padding: 4, lineHeight: 1, cursor: 'pointer' }}>×</button>
             </div>
@@ -587,7 +587,7 @@ export default function RecurringPage() {
                 Cancel
               </button>
               <button onClick={handleSave} style={{ flex: 2, padding: '12px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', boxShadow: '0 4px 16px var(--accent-glow-2)' }}>
-                {editItem ? 'Save Changes' : 'Add Recurring'}
+                {editItem ? t('action.save') : t('recurring.add')}
               </button>
             </div>
           </div>
